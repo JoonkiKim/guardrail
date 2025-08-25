@@ -211,16 +211,16 @@ function MyApp({ Component, pageProps }) {
     <>
       <Head>
         <title>GDR</title>
-        <meta
+        {/* <meta
           name="description"
           content="서울대학교 야구 동아리 통합 플랫폼입니다. 실시간 경기 중계, 일정, 선수 정보, 랭킹을 확인하세요."
         />
         <meta name="viewport" content="width=device-width, initial-scale=1" />
         <link rel="icon" href="/images/GDR.png" />
         <link rel="manifest" href="/manifest.json" />
-        <meta name="theme-color" content="#000000" />
+        <meta name="theme-color" content="#000000" /> */}
         {/* Open Graph 태그 - 전역 설정 */}
-        <meta property="og:title" content="SNU baseball" />
+        {/* <meta property="og:title" content="SNU baseball" />
         <meta
           property="og:description"
           content="서울대학교 야구 동아리 통합 플랫폼입니다. 실시간 경기 중계, 일정, 선수 정보, 랭킹을 확인하세요."
@@ -232,7 +232,7 @@ function MyApp({ Component, pageProps }) {
           content="https://snubaseball.site/images/og-logo.png"
         />
         <meta property="og:image:width" content="1200" />
-        <meta property="og:image:height" content="630" />
+        <meta property="og:image:height" content="630" /> */}
       </Head>
       <Global styles={pretendardStyles} />
       <RecoilRoot>
