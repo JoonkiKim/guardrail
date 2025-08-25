@@ -29,7 +29,7 @@ export const formatDate = (dateString: any) => {
 // };
 
 // 애플리케이션 구동 시 단 한 번만 기본 타임존을 KST로 고정
-moment.tz.setDefault("Asia/Seoul");
+// moment.tz.setDefault("Asia/Seoul");
 moment.locale("ko");
 
 /** YYYY‑MM‑DD 포맷 (KST) */
