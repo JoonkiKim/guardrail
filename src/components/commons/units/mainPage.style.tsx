@@ -2,7 +2,7 @@ import styled from "@emotion/styled";
 
 // ─── 전체 컨테이너 ─────────────────────────────
 export const Container = styled.div<{ gradient: string }>`
-  min-height: 93vh;
+  min-height: 100vh;
   background: linear-gradient(135deg, ${(props) => props.gradient});
   font-family: "Pretendard", sans-serif;
 `;
