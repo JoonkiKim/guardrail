@@ -3,9 +3,7 @@ import PavlovSelectionPage from "../../src/components/commons/units/pavlovSelect
 export default function PavlovPageMain() {
   return (
     <>
-      <div>
-        <PavlovSelectionPage />
-      </div>
+      <PavlovSelectionPage />
     </>
   );
 }

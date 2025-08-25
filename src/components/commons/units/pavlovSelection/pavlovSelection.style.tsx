@@ -1,7 +1,7 @@
 import styled from "@emotion/styled";
 
 export const Container = styled.div<{ gradient: string }>`
-  min-height: 93vh;
+  min-height: 100vh;
   background: linear-gradient(135deg, ${(props) => props.gradient});
   font-family: "Pretendard", sans-serif;
 `;
