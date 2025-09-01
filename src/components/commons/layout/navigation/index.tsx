@@ -22,23 +22,21 @@ const navGlobalStyles = css`
 
 // ─── Guardrail Diary 하단 네비게이션 ─────────────────────────────
 export const BottomNav = styled.nav`
-  display: none;
+  display: block; // display: none에서 변경
   position: fixed;
   bottom: 0;
-  left: 0;
-  right: 0;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 100%;
+  max-width: 480px;
   border-top: 1px solid #e5e7eb;
   background: rgba(255, 255, 255, 0.9);
   backdrop-filter: blur(8px);
   z-index: 40;
-
-  @media (max-width: 639px) {
-    display: block;
-  }
 `;
 
 export const BottomNavContent = styled.div`
-  max-width: 1280px;
+  max-width: 480px; // 1280px에서 변경
   margin: 0 auto;
   padding: 0 8px;
   display: flex;

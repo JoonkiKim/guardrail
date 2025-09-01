@@ -284,7 +284,7 @@ export default function TodoAddPage() {
             <FormGroup>
               <Label>설명</Label>
               <Textarea
-                placeholder="할 일에 대한 자세한 설명을 입력하세요"
+                placeholder="할 일에 대한 설명을 입력하세요"
                 {...register("description")}
               />
             </FormGroup>

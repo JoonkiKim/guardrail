@@ -22,7 +22,7 @@ export const AppBarContent = styled.div`
   align-items: center;
   justify-content: space-between;
   padding: 16px 20px;
-  max-width: 1200px;
+  max-width: 480px; // 1200px에서 변경
   margin: 0 auto;
 `;
 
@@ -81,7 +81,7 @@ export const DateDisplay = styled.div`
 
 // ─── Content ─────────────────────────────
 export const ContentWrapper = styled.div`
-  max-width: 1280px;
+  max-width: 480px; // 1280px에서 변경
   margin: 0 auto;
   padding: 0 16px 40px 16px;
   padding-top: 24px;
@@ -153,8 +153,9 @@ export const MainLayout = styled.div`
   gap: 24px;
   // margin-top: 16px;
 
+  /* 데스크톱에서도 1열 유지 (480px 너비에 맞춤) */
   @media (min-width: 1024px) {
-    grid-template-columns: 240px 1fr;
+    grid-template-columns: 1fr;
   }
 `;
 

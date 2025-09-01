@@ -413,7 +413,7 @@ export default function MainPage() {
             <AppTitle>Guardrail Diary</AppTitle>
             <AppSubtitle>길에서 벗어나지 않도록 붙드는 매일의 기록</AppSubtitle>
           </AppInfo>
-          <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
+          {/* <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
             <ColorwaySelect
               value={colorway}
               onChange={(e) =>
@@ -431,7 +431,7 @@ export default function MainPage() {
               <CalendarIconComponent />
               <span>{today}</span>
             </DateDisplay>
-          </div>
+          </div> */}
         </AppBarContent>
       </TopAppBar>
 

@@ -265,9 +265,10 @@ export const GridContainer = styled.div`
   grid-template-columns: 1fr;
   gap: 24px;
 
-  @media (min-width: 768px) {
+  /* 2열 레이아웃 제거 */
+  /* @media (min-width: 768px) {
     grid-template-columns: repeat(2, 1fr);
-  }
+  } */
 `;
 
 export const FullWidthContainer = styled.div`

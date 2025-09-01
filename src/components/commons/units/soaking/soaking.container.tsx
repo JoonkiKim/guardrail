@@ -172,7 +172,7 @@ export default function SoakingContainer({
             <CardTitleWithIcon>새 담금주 🍇</CardTitleWithIcon>
           </CardHeader>
           <CardContent>
-            <Grid cols={2}>
+            <Grid cols={1}>
               <Input
                 placeholder="제목"
                 value={title}
