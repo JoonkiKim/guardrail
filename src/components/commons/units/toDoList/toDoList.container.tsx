@@ -259,6 +259,7 @@ export default function TodoListPage() {
   const theme = COLORWAYS[colorway];
   const [currentMonth, setCurrentMonth] = useState(new Date());
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
+  const [isNavigating, setIsNavigating] = useState(false); // 네비게이션 상태 추가
   const dropdownRef = useRef<HTMLDivElement>(null);
   const todayRef = useRef<HTMLDivElement>(null); // 오늘 날짜 ref 추가
 
@@ -361,9 +362,10 @@ export default function TodoListPage() {
   const ChevronLeftIcon = () => <span>◀</span>;
   const ChevronRightIcon = () => <span>▶</span>;
 
-  // 뒤로가기 핸들러
+  // 뒤로가기 핸들러 (로딩 상태 추가)
   const handleBack = () => {
-    router.push("/");
+    setIsNavigating(true); // 로딩 시작
+    router.back();
   };
 
   // 오늘 날짜로 스크롤 핸들러
@@ -378,9 +380,10 @@ export default function TodoListPage() {
     }
   };
 
-  // 새 투두 추가 핸들러
+  // 새 투두 추가 핸들러 (로딩 상태 추가)
   const handleAddTodo = () => {
     console.log("새 투두 추가");
+    setIsNavigating(true); // 로딩 시작
     router.push("/todoAdd"); // /todoAdd 페이지로 이동
   };
 
@@ -389,6 +392,31 @@ export default function TodoListPage() {
     console.log("이벤트 클릭:", eventId);
     // TODO: 이벤트 상세 페이지로 이동
   };
+
+  // 라우터 이벤트 리스너 추가
+  useEffect(() => {
+    const handleRouteChangeStart = () => {
+      setIsNavigating(true);
+    };
+
+    const handleRouteChangeComplete = () => {
+      setIsNavigating(false);
+    };
+
+    const handleRouteChangeError = () => {
+      setIsNavigating(false);
+    };
+
+    router.events.on('routeChangeStart', handleRouteChangeStart);
+    router.events.on('routeChangeComplete', handleRouteChangeComplete);
+    router.events.on('routeChangeError', handleRouteChangeError);
+
+    return () => {
+      router.events.off('routeChangeStart', handleRouteChangeStart);
+      router.events.off('routeChangeComplete', handleRouteChangeComplete);
+      router.events.off('routeChangeError', handleRouteChangeError);
+    };
+  }, [router.events]);
 
   return (
     <Container gradient={theme.gradient}>
@@ -518,10 +546,12 @@ export default function TodoListPage() {
         </EventList>
       </ContentWrapper>
 
-      {/* Floating Action Button */}
-      <FloatingActionButton theme={theme} onClick={handleAddTodo}>
-        <PlusIcon />
-      </FloatingActionButton>
+      {/* Floating Action Button - 로딩 중일 때 숨김 */}
+      {!isNavigating && (
+        <FloatingActionButton theme={theme} onClick={handleAddTodo}>
+          <PlusIcon />
+        </FloatingActionButton>
+      )}
     </Container>
   );
 }

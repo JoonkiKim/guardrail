@@ -38,15 +38,15 @@ import {
   COLORWAYS,
   mockInfusions,
   CardTitleWithIcon,
-} from "./soaking.style";
+} from "./infusion.style";
 
-interface SoakingContainerProps {
+interface InfusionContainerProps {
   theme?: keyof typeof COLORWAYS;
 }
 
-export default function SoakingContainer({
+export default function InfusionContainer({
   theme = "forest",
-}: SoakingContainerProps) {
+}: InfusionContainerProps) {
   const router = useRouter();
   const [activeTab, setActiveTab] = useState("decision");
   const [title, setTitle] = useState("");

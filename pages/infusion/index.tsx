@@ -1,10 +1,10 @@
-import SoakingContainer from "../../src/components/commons/units/soaking/soaking.container";
+import InfusionContainer from "../../src/components/commons/units/infusion/infusion.container";
 
-export default function SoakingPageMain() {
+export default function InfusionPageMain() {
   return (
     <>
       <div>
-        <SoakingContainer />
+        <InfusionContainer />
       </div>
     </>
   );

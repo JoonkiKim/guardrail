@@ -354,7 +354,7 @@ export default function TodoAddPage() {
           </FormSection>
 
           {/* 카테고리 섹션 */}
-          <FormSection>
+          {/* <FormSection>
             <SectionTitle>
               <SectionIcon
                 accentBg={theme.accentBg}
@@ -416,7 +416,7 @@ export default function TodoAddPage() {
                 </CategoryOptions>
               </CategoryDropdown>
             </FormGroup>
-          </FormSection>
+          </FormSection> */}
 
           {/* 반복 설정 섹션 */}
           <FormSection>

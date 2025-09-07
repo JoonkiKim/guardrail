@@ -251,7 +251,7 @@ export default function MypageContainer({
         </Card>
 
         {/* 4. 개인화 기능 */}
-        <Card>
+        {/* <Card>
           <CardHeader>
             <CardTitle>목표 달성 현황</CardTitle>
           </CardHeader>
@@ -277,7 +277,7 @@ export default function MypageContainer({
               </GoalItem>
             ))}
           </CardContent>
-        </Card>
+        </Card> */}
 
         {/* <Card>
           <CardHeader>
