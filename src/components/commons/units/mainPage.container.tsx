@@ -1,5 +1,5 @@
 import React, { useMemo, useState } from "react";
-import Link from "next/link"; // Link import 추가
+import Link from "next/link";
 import {
   Container,
   TopAppBar,
@@ -99,6 +99,53 @@ const COLORWAYS: Record<
   },
 };
 
+// 샘플 데이터
+const SAMPLE_PAVLOV = {
+  stimulus: "감정적 동요",
+  response: "10초 세며 숨 고르기",
+};
+
+const SAMPLE_TODOS = [
+  {
+    id: 1,
+    title: "프로젝트 문서 작성",
+    time: "09:00",
+    description: "신규 프로젝트 기획서 초안 작성",
+    completed: false,
+  },
+  {
+    id: 2,
+    title: "팀 미팅 참석",
+    time: "14:00",
+    description: "주간 스프린트 리뷰 미팅",
+    completed: false,
+  },
+  {
+    id: 3,
+    title: "코드 리뷰",
+    time: "16:00",
+    description: "동료의 PR 리뷰 및 피드백",
+    completed: true,
+  },
+];
+
+const SAMPLE_GUARDRAILS = [
+  {
+    id: 1,
+    date: "2024-01-15",
+    mood: "만족스러움",
+    title: "오늘의 성찰",
+    summary: "프로젝트 완성으로 팀워크의 중요성을 깨달았다",
+  },
+  {
+    id: 2,
+    date: "2024-01-14",
+    mood: "감사함",
+    title: "일상의 소중함",
+    summary: "소소한 순간들에 감사하는 마음을 갖게 되었다",
+  },
+];
+
 export default function MainPage() {
   const [nav, setNav] = useState<
     "entry" | "todo" | "pavlov" | "daily" | "infusion" | "my"
@@ -131,270 +178,342 @@ export default function MainPage() {
   const WindIcon = () => <span>💨</span>;
   const BrainIcon = () => <span>🧠</span>;
 
-  // 컴포넌트 함수들
-  const NavCard = () => (
-    <Card>
-      <CardHeader>
-        <CardTitle>길의 난간</CardTitle>
-      </CardHeader>
-      <CardContent>
-        <NavItem isActive={nav === "todo"} onClick={() => setNav("todo")}>
-          <NavIcon accentText={theme.accentText}>
-            <ListTodoIcon />
-          </NavIcon>
-          <NavLabel>투두</NavLabel>
-          <NavArrow>
-            <ChevronRightIcon />
-          </NavArrow>
-        </NavItem>
-        <NavItem isActive={nav === "pavlov"} onClick={() => setNav("pavlov")}>
-          <NavIcon accentText={theme.accentText}>
-            <ActivityIcon />
-          </NavIcon>
-          <NavLabel>파블로프 보기</NavLabel>
-          <NavArrow>
-            <ChevronRightIcon />
-          </NavArrow>
-        </NavItem>
-        <NavItem isActive={nav === "daily"} onClick={() => setNav("daily")}>
-          <NavIcon accentText={theme.accentText}>
-            <NotebookPenIcon />
-          </NavIcon>
-          <NavLabel>데일리 가드레일</NavLabel>
-          <NavArrow>
-            <ChevronRightIcon />
-          </NavArrow>
-        </NavItem>
-        <NavItem
-          isActive={nav === "infusion"}
-          onClick={() => setNav("infusion")}
-        >
-          <NavIcon accentText={theme.accentText}>
-            <AnchorIcon />
-          </NavIcon>
-          <NavLabel>담금주 기록</NavLabel>
-          <NavArrow>
-            <ChevronRightIcon />
-          </NavArrow>
-        </NavItem>
-        <NavItem isActive={nav === "my"} onClick={() => setNav("my")}>
-          <NavIcon accentText={theme.accentText}>
-            <UserIcon />
-          </NavIcon>
-          <NavLabel>마이페이지</NavLabel>
-          <NavArrow>
-            <ChevronRightIcon />
-          </NavArrow>
-        </NavItem>
-      </CardContent>
-    </Card>
-  );
-
-  const StreakRowComponent = () => (
-    <StreakRow>
-      <StreakCard ring={theme.ring}>
-        <StreakLabel>연속 기록</StreakLabel>
-        <StreakValue>
-          <StreakNumber>7</StreakNumber>
-          <StreakUnit>days</StreakUnit>
-        </StreakValue>
-        <ProgressBar>
-          <ProgressFill button={theme.button} buttonHover={theme.buttonHover} />
-        </ProgressBar>
-      </StreakCard>
-      <StreakCard ring={theme.ring} bg={theme.emphCard}>
-        <StreakLabel>다음 리마인드</StreakLabel>
-        <div style={{ marginTop: "4px", fontSize: "14px" }}>
-          1달 뒤 · "관계 갈등"
-        </div>
-      </StreakCard>
-      <StreakCard ring={theme.ring}>
-        <StreakLabel>오늘의 한 가지</StreakLabel>
-        <div style={{ marginTop: "4px", fontSize: "14px" }}>
-          회의 전에 감사 한 줄
-        </div>
-      </StreakCard>
-    </StreakRow>
-  );
-
-  const RoutineCard = () => (
-    <Card>
-      <CardHeader>
-        <CardTitle>루틴 알림</CardTitle>
-      </CardHeader>
-      <CardContent>
-        <div
-          style={{
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "space-between",
-            marginBottom: "12px",
-          }}
-        >
-          <div>
-            <p style={{ fontSize: "14px", fontWeight: "500", margin: 0 }}>
-              매일 기록 시간
-            </p>
-            <p style={{ fontSize: "12px", color: "#6b7280", margin: 0 }}>
-              조용한 시간에 가드레일을 세워요
-            </p>
-          </div>
-          <Input type="time" defaultValue="21:00" style={{ width: "auto" }} />
-        </div>
-        <Separator />
-        <div
-          style={{
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "space-between",
-          }}
-        >
-          <div>
-            <p style={{ fontSize: "14px", fontWeight: "500", margin: 0 }}>
-              알림 받기
-            </p>
-            <p style={{ fontSize: "12px", color: "#6b7280", margin: 0 }}>
-              브라우저/모바일 푸시
-            </p>
-          </div>
-          <Switch type="checkbox" defaultChecked />
-        </div>
-      </CardContent>
-    </Card>
-  );
-
-  const BottomNavComponent = () => (
-    <BottomNav>
-      <BottomNavContent>
-        <BottomNavItem
-          isActive={nav === "todo"}
-          accentText={theme.accentText}
-          onClick={() => setNav("todo")}
-        >
-          <BottomNavIcon>
-            <ListTodoIcon />
-          </BottomNavIcon>
-          <BottomNavLabel>투두</BottomNavLabel>
-        </BottomNavItem>
-        <BottomNavItem
-          isActive={nav === "pavlov"}
-          accentText={theme.accentText}
-          onClick={() => setNav("pavlov")}
-        >
-          <BottomNavIcon>
-            <BrainIcon />
-          </BottomNavIcon>
-          <BottomNavLabel>파블로프</BottomNavLabel>
-        </BottomNavItem>
-        <BottomNavItem
-          isActive={nav === "daily"}
-          accentText={theme.accentText}
-          onClick={() => setNav("daily")}
-        >
-          <BottomNavIcon>
-            <NotebookPenIcon />
-          </BottomNavIcon>
-          <BottomNavLabel>가드레일</BottomNavLabel>
-        </BottomNavItem>
-        <BottomNavItem
-          isActive={nav === "infusion"}
-          accentText={theme.accentText}
-          onClick={() => setNav("infusion")}
-        >
-          <BottomNavIcon>
-            <AnchorIcon />
-          </BottomNavIcon>
-          <BottomNavLabel>담금주</BottomNavLabel>
-        </BottomNavItem>
-        <BottomNavItem
-          isActive={nav === "my"}
-          accentText={theme.accentText}
-          onClick={() => setNav("my")}
-        >
-          <BottomNavIcon>
-            <UserIcon />
-          </BottomNavIcon>
-          <BottomNavLabel>마이</BottomNavLabel>
-        </BottomNavItem>
-      </BottomNavContent>
-    </BottomNav>
-  );
-
-  const FabComponent = () => (
-    <Fab theme={theme} onClick={() => setNav("pavlov")}>
-      <PlusIcon />
-    </Fab>
-  );
-
   const EntryScreen = () => (
-    <div style={{ display: "flex", flexDirection: "column", gap: "24px" }}>
-      {/* <SectionTitle>
-        <SectionIcon accentBg={theme.accentBg} accentText={theme.accentText}>
-          <LeafIcon />
-        </SectionIcon>
-        <SectionText>
-          <SectionHeading>삶의 기준들</SectionHeading>
-          <SectionSubtitle>
-            매일의 행동이 내 철학과 삶의 방향을 닮아가도록
-          </SectionSubtitle>
-        </SectionText>
-      </SectionTitle> */}
+    <div style={{ display: "flex", flexDirection: "column", gap: "20px" }}>
+      {/* 헤더 섹션 */}
+      <div style={{ textAlign: "center", marginBottom: "8px" }}>
+        <div
+          style={{
+            fontSize: "24px",
+            fontWeight: "700",
+            color: theme.accentText,
+            marginBottom: "4px",
+          }}
+        >
+          {today}
+        </div>
+        {/* <div style={{ fontSize: "14px", color: "#6b7280" }}>
+          오늘도 의미있는 하루 되세요
+        </div> */}
+      </div>
 
-      <Card>
-        <CardHeader>
-          <CardTitle size="sm">
-            매일의 행동이 내 철학적 원칙을 반영하고 있는가?
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div style={{ fontSize: "14px", color: "#374151" }}>
-            <ol style={{ paddingLeft: "20px", margin: 0 }}>
-              <li>자기 자신에게 떳떳하도록 하는 것.</li>
-              <li>무지를 떠올리며 이치를 궁구하는 것.</li>
-              <li>허무의 증명을 목적으로 회의하지 않는 것.</li>
-              <li>
-                시공의 무한함과 그를 현상하는 나 자신을 동시에 주목하는 것.
-              </li>
-              <li>
-                아름답다고 옳은 게 아님을, 옳다고 선한 게 아님을, 선하다고
-                아름다운 게 아님을 기억하는 것.
-              </li>
-            </ol>
+      {/* 그리드 레이아웃 */}
+      <div
+        style={{
+          display: "grid",
+          gridTemplateColumns: "1fr 1fr",
+          gap: "16px",
+          marginBottom: "8px",
+        }}
+      >
+        {/* 파블로프 카드 */}
+        <Card
+          style={{
+            background: `linear-gradient(135deg, ${theme.accentBg}, ${theme.emphCard})`,
+            border: `2px solid ${theme.ring}`,
+            position: "relative",
+            overflow: "hidden",
+          }}
+        >
+          <div
+            style={{
+              position: "absolute",
+              top: "12px",
+              right: "12px",
+              fontSize: "24px",
+              opacity: 0.3,
+            }}
+          >
+            {/* 🧠 */}
           </div>
-        </CardContent>
-      </Card>
+          <CardHeader style={{ paddingBottom: "8px" }}>
+            <CardTitle
+              style={{
+                fontSize: "16px",
+                fontWeight: "600",
+                color: theme.accentText,
+              }}
+            >
+              오늘의 파블로프
+            </CardTitle>
+          </CardHeader>
+          <CardContent style={{ paddingTop: "0" }}>
+            <div style={{ marginBottom: "12px" }}>
+              <div
+                style={{
+                  fontSize: "12px",
+                  color: theme.accentText,
+                  fontWeight: "600",
+                  marginBottom: "4px",
+                  textTransform: "uppercase",
+                  letterSpacing: "0.5px",
+                }}
+              >
+                {SAMPLE_PAVLOV.stimulus}
+              </div>
+              <div
+                style={{
+                  fontSize: "14px",
+                  color: "#374151",
+                  fontWeight: "500",
+                  lineHeight: "1.4",
+                }}
+              >
+                {SAMPLE_PAVLOV.response}
+              </div>
+            </div>
+            <Link href="/pavlov" passHref>
+              <Button
+                theme={theme}
+                style={{
+                  width: "100%",
+                  fontSize: "12px",
+                  padding: "8px 12px",
+                  borderRadius: "6px",
+                }}
+              >
+                더 보기 →
+              </Button>
+            </Link>
+          </CardContent>
+        </Card>
 
-      <Card>
+        {/* 투두 카드 */}
+        <Card
+          style={{
+            background: "rgba(255, 255, 255, 0.9)",
+            border: `2px solid ${theme.ring}`,
+            position: "relative",
+            overflow: "hidden",
+          }}
+        >
+          <div
+            style={{
+              position: "absolute",
+              top: "12px",
+              right: "12px",
+              fontSize: "24px",
+              opacity: 0.3,
+            }}
+          >
+            {/* 📝 */}
+          </div>
+          <CardHeader style={{ paddingBottom: "8px" }}>
+            <CardTitle
+              style={{
+                fontSize: "16px",
+                fontWeight: "600",
+                color: theme.accentText,
+              }}
+            >
+              오늘의 할 일
+            </CardTitle>
+          </CardHeader>
+          <CardContent style={{ paddingTop: "0" }}>
+            <div style={{ marginBottom: "12px" }}>
+              {SAMPLE_TODOS.slice(0, 3).map((todo) => (
+                <div
+                  key={todo.id}
+                  style={{
+                    fontSize: "12px",
+                    color: "#374151",
+                    marginBottom: "6px",
+                  }}
+                >
+                  {todo.title}
+                </div>
+              ))}
+              {SAMPLE_TODOS.length > 3 && (
+                <div
+                  style={{
+                    fontSize: "12px",
+                    color: "#6b7280",
+                    fontStyle: "italic",
+                    marginTop: "4px",
+                  }}
+                >
+                  ...
+                </div>
+              )}
+            </div>
+            <Link href="/todoList" passHref>
+              <Button
+                theme={theme}
+                style={{
+                  width: "100%",
+                  fontSize: "12px",
+                  padding: "8px 12px",
+                  borderRadius: "6px",
+                }}
+              >
+                전체 보기 →
+              </Button>
+            </Link>
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* 가드레일 섹션 */}
+      <Card
+        style={{
+          background: "rgba(255, 255, 255, 0.9)",
+          border: `2px solid ${theme.ring}`,
+          position: "relative",
+          overflow: "hidden",
+        }}
+      >
+        <div
+          style={{
+            position: "absolute",
+            top: "16px",
+            right: "16px",
+            fontSize: "28px",
+            opacity: 0.2,
+          }}
+        >
+          {/* 🛡️ */}
+        </div>
         <CardHeader>
-          <CardTitle size="sm">
-            몸과 마음이 모두 건강하고, 경제적으로 풍요롭고,
-            <br />
-            인간관계가 탄탄하며, 스스로의 삶에 주체성과 만족감을 느끼는 삶.
+          <CardTitle
+            style={{
+              fontSize: "18px",
+              fontWeight: "600",
+              color: theme.accentText,
+            }}
+          >
+            최근 가드레일
           </CardTitle>
         </CardHeader>
         <CardContent>
-          <div style={{ display: "flex", flexWrap: "wrap", gap: "8px" }}>
-            {[
-              "신체 (Physical Health)",
-              "정신 (Mental & Emotional Health)",
-              "관계 (Relationships)",
-              "재정 (Finance)",
-              "커리어 & 성장 (Career & Professional Growth)",
-              "생산성 (Productivity & Time Management)",
-              "정체성 & 환경 (Identity & Environment)",
-            ].map((t, i) => (
-              <Badge key={i} theme={theme}>
-                {t}
-              </Badge>
+          <div
+            style={{ display: "flex", flexDirection: "column", gap: "12px" }}
+          >
+            {SAMPLE_GUARDRAILS.map((guardrail, index) => (
+              <div
+                key={guardrail.id}
+                style={{
+                  display: "flex",
+                  alignItems: "flex-start",
+                  gap: "12px",
+                  padding: "12px",
+                  borderRadius: "10px",
+                  background:
+                    index === 0 ? theme.accentBg : "rgba(255, 255, 255, 0.5)",
+                  border: `1px solid ${theme.ring}`,
+                  transition: "all 0.2s ease",
+                }}
+              >
+                {/* <div
+                  style={{
+                    width: "32px",
+                    height: "32px",
+                    borderRadius: "8px",
+                    background: theme.button,
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    color: "white",
+                    fontSize: "12px",
+                    fontWeight: "600",
+                    flexShrink: 0,
+                  }}
+                >
+                  {index + 1}
+                </div> */}
+                <div style={{ flex: 1 }}>
+                  <div
+                    style={{
+                      display: "flex",
+                      alignItems: "center",
+                      gap: "8px",
+                      marginBottom: "4px",
+                    }}
+                  >
+                    <div
+                      style={{
+                        fontSize: "14px",
+                        fontWeight: "600",
+                        color: "#374151",
+                      }}
+                    >
+                      {guardrail.title}
+                    </div>
+                    <div
+                      style={{
+                        padding: "2px 6px",
+                        borderRadius: "4px",
+                        background: theme.ring,
+                        fontSize: "10px",
+                        color: theme.accentText,
+                        fontWeight: "500",
+                      }}
+                    >
+                      {guardrail.mood}
+                    </div>
+                  </div>
+                  <div
+                    style={{
+                      fontSize: "12px",
+                      color: "#6b7280",
+                      lineHeight: "1.4",
+                      marginBottom: "4px",
+                    }}
+                  >
+                    {guardrail.summary}
+                  </div>
+                  <div
+                    style={{
+                      fontSize: "11px",
+                      color: theme.accentText,
+                      fontWeight: "500",
+                    }}
+                  >
+                    {guardrail.date}
+                  </div>
+                </div>
+              </div>
             ))}
           </div>
+          <div style={{ marginTop: "16px" }}>
+            <Link href="/guardRailList" passHref>
+              <Button
+                theme={theme}
+                style={{
+                  width: "100%",
+                  fontSize: "14px",
+                  padding: "12px",
+                  borderRadius: "8px",
+                }}
+              >
+                가드레일 전체 보기 →
+              </Button>
+            </Link>
+          </div>
         </CardContent>
       </Card>
 
-      <div style={{ display: "flex", justifyContent: "flex-end" }}>
+      {/* 메인 액션 버튼 */}
+      <div
+        style={{
+          display: "flex",
+          justifyContent: "center",
+          marginTop: "8px",
+        }}
+      >
         <Link href="/writeGuardRail" passHref>
-          <Button theme={theme} as="a">
-            오늘의 가드레일 쓰기
+          <Button
+            theme={theme}
+            style={{
+              padding: "16px 24px",
+              fontSize: "16px",
+              fontWeight: "600",
+              borderRadius: "12px",
+              boxShadow: `0 4px 12px ${theme.button}30`,
+              background: `linear-gradient(135deg, ${theme.button}, ${theme.buttonHover})`,
+              border: "none",
+            }}
+          >
+            ✏️ 오늘의 가드레일 쓰기
           </Button>
         </Link>
       </div>
@@ -406,32 +525,10 @@ export default function MainPage() {
       {/* Top App Bar */}
       <TopAppBar>
         <AppBarContent>
-          {/* <AppIcon accentBg={theme.accentBg} accentText={theme.accentText}>
-            <LeafIcon />
-          </AppIcon> */}
           <AppInfo>
             <AppTitle>Guardrail Diary</AppTitle>
             <AppSubtitle>길에서 벗어나지 않도록 붙드는 매일의 기록</AppSubtitle>
           </AppInfo>
-          {/* <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
-            <ColorwaySelect
-              value={colorway}
-              onChange={(e) =>
-                setColorway(e.target.value as keyof typeof COLORWAYS)
-              }
-            >
-              {Object.entries(COLORWAYS).map(([key, v]) => (
-                <option key={key} value={key}>
-                  {v.name}
-                </option>
-              ))}
-            </ColorwaySelect>
-
-            <DateDisplay>
-              <CalendarIconComponent />
-              <span>{today}</span>
-            </DateDisplay>
-          </div> */}
         </AppBarContent>
       </TopAppBar>
 
@@ -441,12 +538,6 @@ export default function MainPage() {
           <MainContent>{nav === "entry" && <EntryScreen />}</MainContent>
         </MainLayout>
       </ContentWrapper>
-
-      {/* Bottom Navigation for mobile */}
-      {/* <BottomNavComponent /> */}
-
-      {/* Floating Action Button: quick Pavlov */}
-      {/* <FabComponent /> */}
     </Container>
   );
 }

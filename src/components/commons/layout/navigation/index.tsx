@@ -73,7 +73,7 @@ export const BottomNavLabel = styled.span`
 // 아이콘 컴포넌트들
 const ListTodoIcon = () => <span>📝</span>;
 const BrainIcon = () => <span>🧠</span>;
-const NotebookPenIcon = () => <span>✏️</span>;
+const NotebookPenIcon = () => <span>🏠</span>;
 const AnchorIcon = () => <span>🍇</span>;
 const UserIcon = () => <span>👤</span>;
 
@@ -107,16 +107,16 @@ export default function LayoutNavigation({
       {/* Guardrail Diary 하단 네비게이션 */}
       <BottomNav>
         <BottomNavContent>
-          <Link href="/todoList" passHref>
+          <Link href="/" passHref>
             <BottomNavItem
-              isActive={nav === "todo"}
+              isActive={nav === "daily"}
               accentText={theme.accentText}
-              onClick={() => setNav("todo")}
+              onClick={() => setNav("daily")}
             >
               <BottomNavIcon>
-                <ListTodoIcon />
+                <NotebookPenIcon />
               </BottomNavIcon>
-              <BottomNavLabel>투두</BottomNavLabel>
+              <BottomNavLabel>홈</BottomNavLabel>
             </BottomNavItem>
           </Link>
 
@@ -133,16 +133,16 @@ export default function LayoutNavigation({
             </BottomNavItem>
           </Link>
 
-          <Link href="/guardRailList" passHref>
+          <Link href="/todoList" passHref>
             <BottomNavItem
-              isActive={nav === "daily"}
+              isActive={nav === "todo"}
               accentText={theme.accentText}
-              onClick={() => setNav("daily")}
+              onClick={() => setNav("todo")}
             >
               <BottomNavIcon>
-                <NotebookPenIcon />
+                <ListTodoIcon />
               </BottomNavIcon>
-              <BottomNavLabel>가드레일</BottomNavLabel>
+              <BottomNavLabel>투두</BottomNavLabel>
             </BottomNavItem>
           </Link>
 

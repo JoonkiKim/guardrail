@@ -31,7 +31,7 @@ export default function Layout(props: ILayoutProps): JSX.Element {
       <div
         style={{
           backgroundColor: "white",
-          paddingBottom: "7vh", // 하단 네비게이션 높이만큼 여백 추가
+          paddingBottom: "6vh", // 하단 네비게이션 높이만큼 여백 추가
         }}
       >
         {props.children}
