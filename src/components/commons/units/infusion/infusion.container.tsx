@@ -1,5 +1,50 @@
 import { useState } from "react";
 import { useRouter } from "next/router";
+import { useForm } from "react-hook-form";
+import { yupResolver } from "@hookform/resolvers/yup";
+import * as yup from "yup";
+import { useMutation, useQuery } from "@apollo/client";
+import {
+  CREATE_INFUSION,
+  FETCH_INFUSIONS,
+} from "../../../../commons/apis/graphql-queries";
+
+// TypeScript types for GraphQL operations
+interface InfusionDetail {
+  id: string;
+  description: string;
+  periodType: string;
+}
+
+interface Infusion {
+  id: string;
+  title: string;
+  category: "DECISION" | "STRESS" | "CONSUMPTION";
+  description: string;
+  infusionDetails: InfusionDetail[];
+  createdAt: string;
+  updatedAt: string;
+}
+
+interface FetchInfusionsData {
+  fetchInfusions: Infusion[];
+}
+
+interface CreateInfusionData {
+  createInfusion: Infusion;
+}
+
+// 뮤테이션 입력 타입 정의
+interface CreateInfusionInput {
+  title: string;
+  category: "DECISION" | "STRESS" | "CONSUMPTION";
+  description: string;
+  infusionDetails: InfusionDetail[];
+}
+
+interface CreateInfusionVariables {
+  createInfusionInput: CreateInfusionInput;
+}
 import {
   Container,
   TopAppBar,
@@ -38,7 +83,24 @@ import {
   COLORWAYS,
   mockInfusions,
   CardTitleWithIcon,
+  ErrorMessage,
 } from "./infusion.style";
+
+// yup 검증 스키마 정의
+const schema = yup.object({
+  title: yup
+    .string()
+    .required("최소 1글자 이상 입력해주세요")
+    .min(1, "최소 1글자 이상 입력해주세요"),
+  background: yup
+    .string()
+    .required("최소 1글자 이상 입력해주세요")
+    .min(1, "최소 1글자 이상 입력해주세요"),
+  category: yup.string().required("카테고리를 선택해주세요"),
+});
+
+// yup 스키마에서 타입 추출
+type FormData = yup.InferType<typeof schema>;
 
 interface InfusionContainerProps {
   theme?: keyof typeof COLORWAYS;
@@ -48,77 +110,65 @@ export default function InfusionContainer({
   theme = "forest",
 }: InfusionContainerProps) {
   const router = useRouter();
-  const [activeTab, setActiveTab] = useState("decision");
-  const [title, setTitle] = useState("");
-  const [background, setBackground] = useState("");
-  const [thoughts, setThoughts] = useState("");
-  const [selectedTime, setSelectedTime] = useState("");
   const [selectedCategory, setSelectedCategory] = useState<string>("all");
+  const [activeCategory, setActiveCategory] = useState<string>("DECISION"); // 카테고리 상태 분리
 
   const currentTheme = COLORWAYS[theme];
 
-  const timeOptions = ["1주 뒤", "1달 뒤", "1년 뒤", "10년 뒤"];
+  // react-hook-form 사용 (yup resolver 추가)
+  const {
+    register,
+    handleSubmit,
+    formState: { errors },
+    watch,
+    setValue,
+    reset,
+  } = useForm<FormData>({
+    resolver: yupResolver(schema),
+    mode: "onSubmit", // submit 시에만 검증
+    defaultValues: {
+      title: "",
+      background: "",
+      category: "DECISION",
+    },
+  });
 
-  // 카테고리별 데이터 추가
-  const enhancedMockInfusions = [
-    {
-      id: 1,
-      title: "이직 고민",
-      category: "decision",
-      status: "숙성중",
-      next: "1달 뒤",
-      preview:
-        "지금 팀에서의 배움과 다음 단계에서 원하는 것의 교집합을 그려본다.",
-    },
-    {
-      id: 2,
-      title: "소비 패턴 점검",
-      category: "spending",
-      status: "숙성중",
-      next: "1주 뒤",
-      preview: "감정 기반 소비가 늘어난 이유를 환경/습관으로 분해한다.",
-    },
-    {
-      id: 3,
-      title: "관계 갈등",
-      category: "stress",
-      status: "수확함",
-      next: "완료",
-      preview:
-        "사실-느낌-요구를 분리해 보니, 부탁을 미리 말하는 연습이 필요했다.",
-    },
-    {
-      id: 4,
-      title: "프로젝트 방향성",
-      category: "decision",
-      status: "숙성중",
-      next: "2주 뒤",
-      preview: "현재 프로젝트의 방향이 올바른지 다시 한번 검토해본다.",
-    },
-    {
-      id: 5,
-      title: "업무 스트레스",
-      category: "stress",
-      status: "숙성중",
-      next: "3일 뒤",
-      preview: "업무에서 받는 스트레스의 원인을 분석하고 대처 방안을 모색한다.",
-    },
-  ];
+  // 현재 선택된 카테고리 감시
+  const watchedCategory = watch("category");
 
-  const handleTimeSelect = (time: string) => {
-    setSelectedTime(time);
-  };
+  // Apollo Client 쿼리 및 뮤테이션 훅 사용
+  const {
+    data: infusionsData,
+    loading,
+    error,
+  } = useQuery<FetchInfusionsData>(FETCH_INFUSIONS);
+  const [createInfusionMutation, { loading: createLoading }] = useMutation<
+    CreateInfusionData,
+    CreateInfusionVariables
+  >(CREATE_INFUSION, {
+    // 뮤테이션 성공 후 캐시 업데이트
+    update(cache, { data }) {
+      if (data?.createInfusion) {
+        // 기존 캐시에서 fetchInfusions 쿼리 결과 가져오기
+        const existingInfusions = cache.readQuery<FetchInfusionsData>({
+          query: FETCH_INFUSIONS,
+        });
 
-  const handleSave = () => {
-    // 여기에 저장 로직 추가
-    console.log({
-      title,
-      type: activeTab,
-      background,
-      thoughts,
-      reminderTime: selectedTime,
-    });
-  };
+        if (existingInfusions) {
+          // 새로운 담금주를 기존 목록에 추가
+          cache.writeQuery<FetchInfusionsData>({
+            query: FETCH_INFUSIONS,
+            data: {
+              fetchInfusions: [
+                data.createInfusion,
+                ...existingInfusions.fetchInfusions,
+              ],
+            },
+          });
+        }
+      }
+    },
+  });
 
   const handleBack = () => {
     router.back();
@@ -128,22 +178,63 @@ export default function InfusionContainer({
     setSelectedCategory(category);
   };
 
+  const handleInfusionClick = (infusionId: string) => {
+    router.push(`/infusion/infusionDetail?id=${infusionId}`);
+  };
+
+  // 카테고리 선택 핸들러
+  const handleCategorySelect = (category: string) => {
+    setActiveCategory(category);
+    setValue("category", category); // 폼 값도 업데이트
+  };
+
+  // 폼 제출 핸들러
+  const onSubmit = async (data: FormData) => {
+    try {
+      const result = await createInfusionMutation({
+        variables: {
+          createInfusionInput: {
+            title: data.title,
+            category: data.category as "DECISION" | "STRESS" | "CONSUMPTION",
+            description: data.background,
+            infusionDetails: [],
+          },
+        },
+      });
+
+      console.log("담금주 생성 성공:", result.data.createInfusion);
+
+      // 성공 후 폼 초기화
+      reset();
+      setActiveCategory("DECISION"); // 카테고리 상태도 초기화
+    } catch (error) {
+      console.error("담금주 생성 실패:", error);
+      alert("담금주 생성 중 오류가 발생했습니다.");
+    }
+  };
+
   // 카테고리별 필터링
+  const infusions: Infusion[] = infusionsData?.fetchInfusions || [];
   const filteredInfusions =
     selectedCategory === "all"
-      ? enhancedMockInfusions
-      : enhancedMockInfusions.filter(
-          (item) => item.category === selectedCategory
-        );
+      ? infusions
+      : infusions.filter((item: Infusion) => {
+          const categoryMap: { [key: string]: string } = {
+            decision: "DECISION",
+            stress: "STRESS",
+            spending: "CONSUMPTION",
+          };
+          return item.category === categoryMap[selectedCategory];
+        });
 
   // 카테고리 이름 변환
   const getCategoryName = (category: string) => {
     switch (category) {
-      case "decision":
+      case "DECISION":
         return "의사결정";
-      case "stress":
+      case "STRESS":
         return "스트레스";
-      case "spending":
+      case "CONSUMPTION":
         return "소비";
       default:
         return "기타";
@@ -172,69 +263,60 @@ export default function InfusionContainer({
             <CardTitleWithIcon>새 담금주 🍇</CardTitleWithIcon>
           </CardHeader>
           <CardContent>
-            <Grid cols={1}>
-              <Input
-                placeholder="제목"
-                value={title}
-                onChange={(e) => setTitle(e.target.value)}
+            <form onSubmit={handleSubmit(onSubmit)}>
+              <Grid cols={1}>
+                <Input placeholder="제목" {...register("title")} />
+                {errors.title && (
+                  <ErrorMessage>{errors.title.message}</ErrorMessage>
+                )}
+
+                <Tabs>
+                  <TabsList>
+                    <TabsTrigger
+                      isActive={activeCategory === "DECISION"}
+                      onClick={() => handleCategorySelect("DECISION")}
+                      type="button" // 버튼 타입 명시
+                    >
+                      의사결정
+                    </TabsTrigger>
+                    <TabsTrigger
+                      isActive={activeCategory === "STRESS"}
+                      onClick={() => handleCategorySelect("STRESS")}
+                      type="button" // 버튼 타입 명시
+                    >
+                      스트레스
+                    </TabsTrigger>
+                    <TabsTrigger
+                      isActive={activeCategory === "CONSUMPTION"}
+                      onClick={() => handleCategorySelect("CONSUMPTION")}
+                      type="button" // 버튼 타입 명시
+                    >
+                      소비
+                    </TabsTrigger>
+                  </TabsList>
+                </Tabs>
+                {errors.category && (
+                  <ErrorMessage>{errors.category.message}</ErrorMessage>
+                )}
+              </Grid>
+
+              <Textarea
+                placeholder="배경과 맥락을 적어두세요"
+                {...register("background")}
               />
-              <Tabs>
-                <TabsList>
-                  <TabsTrigger
-                    isActive={activeTab === "decision"}
-                    onClick={() => setActiveTab("decision")}
-                  >
-                    의사결정
-                  </TabsTrigger>
-                  <TabsTrigger
-                    isActive={activeTab === "stress"}
-                    onClick={() => setActiveTab("stress")}
-                  >
-                    스트레스
-                  </TabsTrigger>
-                  <TabsTrigger
-                    isActive={activeTab === "spending"}
-                    onClick={() => setActiveTab("spending")}
-                  >
-                    소비
-                  </TabsTrigger>
-                </TabsList>
-              </Tabs>
-            </Grid>
+              {errors.background && (
+                <ErrorMessage>{errors.background.message}</ErrorMessage>
+              )}
 
-            <Textarea
-              placeholder="배경과 맥락을 적어두세요"
-              value={background}
-              onChange={(e) => setBackground(e.target.value)}
-            />
-            {/* 
-            <TimeOptionsContainer>
-              {timeOptions.map((time) => (
-                <Badge
-                  key={time}
-                  bgColor="#fef3c7"
-                  textColor="#92400e"
-                  selectedBg="#fbbf24"
-                  selectedText="#92400e"
-                  isSelected={selectedTime === time}
-                  onClick={() => handleTimeSelect(time)}
-                >
-                  {time}
-                </Badge>
-              ))}
-              <ReminderInfo>
-                <span>🔔</span>
-                숙성 리마인드
-              </ReminderInfo>
-            </TimeOptionsContainer> */}
-
-            <Button
-              bgColor={currentTheme.button}
-              hoverColor={currentTheme.buttonHover}
-              onClick={handleSave}
-            >
-              담금 시작
-            </Button>
+              <Button
+                bgColor={currentTheme.button}
+                hoverColor={currentTheme.buttonHover}
+                type="submit"
+                disabled={createLoading}
+              >
+                {createLoading ? "저장 중..." : "담금 시작"}
+              </Button>
+            </form>
           </CardContent>
         </Card>
 
@@ -276,23 +358,37 @@ export default function InfusionContainer({
               </FilterButton>
             </FilterContainer>
 
-            <Grid cols={1}>
-              {filteredInfusions.map((item) => (
-                <InfusionItem key={item.id} ringColor={currentTheme.ring}>
-                  <InfusionHeader>
-                    <InfusionTitle>
-                      {item.title}
-                      <CategoryBadge category={item.category}>
-                        {getCategoryName(item.category)}
-                      </CategoryBadge>
-                    </InfusionTitle>
-                  </InfusionHeader>
-                  {/* <InfusionMeta>다음 리마인드: {item.next}</InfusionMeta> */}
-                  <Separator />
-                  <InfusionPreview>{item.preview}</InfusionPreview>
-                </InfusionItem>
-              ))}
-            </Grid>
+            {loading ? (
+              <div style={{ textAlign: "center", padding: "20px" }}>
+                로딩 중...
+              </div>
+            ) : error ? (
+              <div style={{ textAlign: "center", padding: "20px" }}>
+                데이터를 불러오는 중 오류가 발생했습니다.
+              </div>
+            ) : (
+              <Grid cols={1}>
+                {filteredInfusions.map((item: Infusion) => (
+                  <InfusionItem
+                    key={item.id}
+                    onClick={() => handleInfusionClick(item.id)}
+                    style={{ cursor: "pointer" }}
+                    ringColor={currentTheme.ring}
+                  >
+                    <InfusionHeader>
+                      <InfusionTitle>
+                        {item.title}
+                        <CategoryBadge category={item.category}>
+                          {getCategoryName(item.category)}
+                        </CategoryBadge>
+                      </InfusionTitle>
+                    </InfusionHeader>
+                    <Separator />
+                    <InfusionPreview>{item.description}</InfusionPreview>
+                  </InfusionItem>
+                ))}
+              </Grid>
+            )}
           </CardContent>
         </Card>
       </ContentWrapper>

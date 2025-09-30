@@ -13,6 +13,8 @@ import {
   LoadingOverlay,
 } from "../src/commons/libraries/loadingOverlay";
 import AuthGate from "../src/commons/hooks/authGate";
+import { ApolloProvider } from "@apollo/client";
+import { apolloClient } from "../src/commons/apis/apollo-client";
 function MyApp({ Component, pageProps }) {
   const router = useRouter();
   const isResultPage = router.pathname === "/result";
@@ -233,14 +235,16 @@ function MyApp({ Component, pageProps }) {
       </Head>
       <Global styles={pretendardStyles} />
       <RecoilRoot>
-        <LoadingOverlay visible={loadingRoute}>
-          <LoadingIcon spin fontSize={48} />
-        </LoadingOverlay>
+        <ApolloProvider client={apolloClient}>
+          <LoadingOverlay visible={loadingRoute}>
+            <LoadingIcon spin fontSize={48} />
+          </LoadingOverlay>
 
-        <Layout>
-          {/* 페이지 컴포넌트에도 필요하다면 mobileOnly 전달 */}
-          <Component {...pageProps} />
-        </Layout>
+          <Layout>
+            {/* 페이지 컴포넌트에도 필요하다면 mobileOnly 전달 */}
+            <Component {...pageProps} />
+          </Layout>
+        </ApolloProvider>
       </RecoilRoot>
     </>
   );

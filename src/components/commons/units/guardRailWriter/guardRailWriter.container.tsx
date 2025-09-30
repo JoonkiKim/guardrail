@@ -1,7 +1,9 @@
 import React, { useState, useEffect } from "react";
 import { useRouter } from "next/router";
-import { useForm } from "react-hook-form"; // react-hook-form import 추가
-import GuardRailSuccessModal from "../../modals/guardRailSuccessModal"; // 모달 import 추가
+import { useForm } from "react-hook-form";
+import { yupResolver } from "@hookform/resolvers/yup";
+import * as yup from "yup";
+import GuardRailSuccessModal from "../../modals/guardRailSuccessModal";
 import {
   Container,
   TopAppBar,
@@ -36,7 +38,10 @@ import {
   BottomNavIcon,
   BottomNavLabel,
   Fab,
+  ErrorMessage,
 } from "./guardRailWriter.style";
+import { useMutation } from "@apollo/client";
+import { CREATE_GUARDRAIL } from "../../../../commons/apis/graphql-queries";
 
 // Colorway presets (mainPage와 동일)
 const COLORWAYS: Record<
@@ -211,16 +216,76 @@ const PAVLOV_DATA = [
   },
 ];
 
-// 폼 데이터 타입 정의
-interface FormData {
-  yesterdayMood: string;
-  todayImportant: string;
-  happenedEvents: string;
-  gratitude: string;
-  regrets: string;
-  lifeDirection: string;
-  yesterdayProgress: string;
-  unknowns: string;
+// yup 검증 스키마 정의
+const schema = yup.object({
+  yesterdayMood: yup
+    .string()
+    .required("최소 1글자 이상 입력해주세요")
+    .min(1, "최소 1글자 이상 입력해주세요"),
+  todayImportant: yup
+    .string()
+    .required("최소 1글자 이상 입력해주세요")
+    .min(1, "최소 1글자 이상 입력해주세요"),
+  happenedEvents: yup
+    .string()
+    .required("최소 1글자 이상 입력해주세요")
+    .min(1, "최소 1글자 이상 입력해주세요"),
+  gratitude: yup
+    .string()
+    .required("최소 1글자 이상 입력해주세요")
+    .min(1, "최소 1글자 이상 입력해주세요"),
+  regrets: yup
+    .string()
+    .required("최소 1글자 이상 입력해주세요")
+    .min(1, "최소 1글자 이상 입력해주세요"),
+  lifeDirection: yup
+    .string()
+    .required("최소 1글자 이상 입력해주세요")
+    .min(1, "최소 1글자 이상 입력해주세요"),
+  yesterdayProgress: yup
+    .string()
+    .required("최소 1글자 이상 입력해주세요")
+    .min(1, "최소 1글자 이상 입력해주세요"),
+  unknowns: yup
+    .string()
+    .required("최소 1글자 이상 입력해주세요")
+    .min(1, "최소 1글자 이상 입력해주세요"),
+});
+
+// yup 스키마에서 타입 추출
+type FormData = yup.InferType<typeof schema>;
+
+// TypeScript types for GraphQL operations
+interface Guardrail {
+  id: string;
+  feeling: string;
+  mostImpt: string;
+  diary: string;
+  thanks: string;
+  direction: string;
+  oneStep: string;
+  ignorance: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+interface CreateGuardrailData {
+  createGuardrail: Guardrail;
+}
+
+// 뮤테이션 입력 타입 정의
+interface CreateGuardrailInput {
+  feeling: string;
+  mostImpt: string;
+  diary: string;
+  thanks: string;
+  direction: string;
+  oneStep: string;
+  ignorance: string;
+}
+
+interface CreateGuardrailVariables {
+  createGuardrailInput: CreateGuardrailInput;
 }
 
 export default function GuardRailWriter() {
@@ -246,13 +311,14 @@ export default function GuardRailWriter() {
     setRandomPavlov(PAVLOV_DATA[randomIndex]);
   }, []);
 
-  // react-hook-form 사용
+  // react-hook-form 사용 (yup resolver 추가)
   const {
     register,
     handleSubmit,
     formState: { errors },
     watch,
   } = useForm<FormData>({
+    resolver: yupResolver(schema), // yup resolver 추가
     defaultValues: {
       yesterdayMood: "",
       todayImportant: "",
@@ -276,32 +342,57 @@ export default function GuardRailWriter() {
   const PlusIcon = () => <span>+</span>;
   const SparklesIcon = () => <span>✨</span>;
 
-  const onSubmit = (data: FormData) => {
+  // Apollo Client 뮤테이션 훅 사용
+  const [createGuardrailMutation, { loading, error }] = useMutation<
+    CreateGuardrailData,
+    CreateGuardrailVariables
+  >(CREATE_GUARDRAIL);
+
+  const onSubmit = async (data: FormData) => {
     console.log("=== onSubmit 함수 실행됨 ===");
     console.log("가드레일 저장:", data);
-    console.log("모달 상태 변경 전:", showModal);
 
-    // 여기에 저장 로직 추가
+    try {
+      const result = await createGuardrailMutation({
+        variables: {
+          createGuardrailInput: {
+            feeling: data.yesterdayMood,
+            mostImpt: data.todayImportant,
+            diary: data.happenedEvents,
+            thanks: data.gratitude,
+            direction: data.lifeDirection,
+            oneStep: data.yesterdayProgress,
+            ignorance: data.unknowns,
+          },
+        },
+      });
 
-    // 모달 표시
-    setShowModal(true);
-    console.log("모달 상태 변경 후:", true);
+      console.log("가드레일 저장 성공:", result.data.createGuardrail);
+
+      // 성공 시 모달 표시
+      setShowModal(true);
+      console.log("모달 상태 변경 후:", true);
+    } catch (error) {
+      console.error("가드레일 저장 실패:", error);
+      alert("가드레일 저장 중 오류가 발생했습니다.");
+    }
+
     console.log("=== onSubmit 함수 완료 ===");
   };
 
-  const handleSaveClick = () => {
-    console.log("=== 저장 버튼 클릭됨 ===");
-    console.log("모달 상태 변경 전:", showModal);
+  // const handleSaveClick = () => {
+  //   console.log("=== 저장 버튼 클릭됨 ===");
+  //   console.log("모달 상태 변경 전:", showModal);
 
-    // 폼 데이터 가져오기 (선택사항)
-    const formData = watch();
-    console.log("폼 데이터:", formData);
+  //   // 폼 데이터 가져오기 (선택사항)
+  //   const formData = watch();
+  //   console.log("폼 데이터:", formData);
 
-    // 모달 표시
-    setShowModal(true);
-    console.log("모달 상태 변경 후:", true);
-    console.log("=== 저장 버튼 클릭 완료 ===");
-  };
+  //   // 모달 표시
+  //   setShowModal(true);
+  //   console.log("모달 상태 변경 후:", true);
+  //   console.log("=== 저장 버튼 클릭 완료 ===");
+  // };
 
   const handleBack = () => {
     router.push("/");
@@ -496,17 +587,24 @@ export default function GuardRailWriter() {
         {/* 오늘의 파블로프 섹션 추가 */}
         <TodayPavlovSection />
 
-        <FormContainer onSubmit={handleSubmit(onSubmit)}>
+        <form
+          onSubmit={handleSubmit(onSubmit)}
+          style={{
+            display: "flex",
+            flexDirection: "column",
+            gap: "24px",
+          }}
+        >
           <GridContainer>
             <Card>
               <CardHeader>
                 <CardTitle size="sm">어제의 기분 한 단어</CardTitle>
               </CardHeader>
               <CardContent>
-                <Input
-                  // placeholder="예: 고마움, 걱정, 가벼움, 무덤덤"
-                  {...register("yesterdayMood")}
-                />
+                <Input {...register("yesterdayMood")} />
+                {errors.yesterdayMood && (
+                  <ErrorMessage>{errors.yesterdayMood.message}</ErrorMessage>
+                )}
               </CardContent>
             </Card>
 
@@ -515,10 +613,10 @@ export default function GuardRailWriter() {
                 <CardTitle size="sm">오늘 가장 중요한 한 가지</CardTitle>
               </CardHeader>
               <CardContent>
-                <Input
-                  // placeholder="가장 중요한 하나에 집중해요"
-                  {...register("todayImportant")}
-                />
+                <Input {...register("todayImportant")} />
+                {errors.todayImportant && (
+                  <ErrorMessage>{errors.todayImportant.message}</ErrorMessage>
+                )}
               </CardContent>
             </Card>
           </GridContainer>
@@ -528,11 +626,10 @@ export default function GuardRailWriter() {
               <CardTitle size="sm">있었던 일 (일기)</CardTitle>
             </CardHeader>
             <CardContent>
-              <Textarea
-                rows={6}
-                // placeholder="어제/오늘 있었던 일을 차분히 적어보세요"
-                {...register("happenedEvents")}
-              />
+              <Textarea rows={6} {...register("happenedEvents")} />
+              {errors.happenedEvents && (
+                <ErrorMessage>{errors.happenedEvents.message}</ErrorMessage>
+              )}
             </CardContent>
           </Card>
 
@@ -542,11 +639,10 @@ export default function GuardRailWriter() {
                 <CardTitle size="sm">감사한 것</CardTitle>
               </CardHeader>
               <CardContent>
-                <Textarea
-                  rows={6}
-                  // placeholder="사소해도 좋아요. 고마웠던 장면을 적어보세요"
-                  {...register("gratitude")}
-                />
+                <Textarea rows={6} {...register("gratitude")} />
+                {errors.gratitude && (
+                  <ErrorMessage>{errors.gratitude.message}</ErrorMessage>
+                )}
               </CardContent>
             </Card>
 
@@ -555,11 +651,10 @@ export default function GuardRailWriter() {
                 <CardTitle size="sm">후회하는 일</CardTitle>
               </CardHeader>
               <CardContent>
-                <Textarea
-                  rows={6}
-                  // placeholder="자책 대신 사실을 적습니다"
-                  {...register("regrets")}
-                />
+                <Textarea rows={6} {...register("regrets")} />
+                {errors.regrets && (
+                  <ErrorMessage>{errors.regrets.message}</ErrorMessage>
+                )}
               </CardContent>
             </Card>
           </GridContainer>
@@ -573,11 +668,10 @@ export default function GuardRailWriter() {
                 </CardTitle>
               </CardHeader>
               <CardContent>
-                <Textarea
-                  rows={6}
-                  // placeholder="나의 방향을 한 단락으로 적어봅니다"
-                  {...register("lifeDirection")}
-                />
+                <Textarea rows={6} {...register("lifeDirection")} />
+                {errors.lifeDirection && (
+                  <ErrorMessage>{errors.lifeDirection.message}</ErrorMessage>
+                )}
               </CardContent>
             </Card>
 
@@ -588,11 +682,12 @@ export default function GuardRailWriter() {
                 </CardTitle>
               </CardHeader>
               <CardContent>
-                <Textarea
-                  rows={6}
-                  // placeholder="작은 걸음도 걸음입니다"
-                  {...register("yesterdayProgress")}
-                />
+                <Textarea rows={6} {...register("yesterdayProgress")} />
+                {errors.yesterdayProgress && (
+                  <ErrorMessage>
+                    {errors.yesterdayProgress.message}
+                  </ErrorMessage>
+                )}
               </CardContent>
             </Card>
           </GridContainer>
@@ -607,11 +702,10 @@ export default function GuardRailWriter() {
                   AI가 질문을 제안해 줄 수 있어요
                 </p>
               </div>
-              <Textarea
-                rows={4}
-                // placeholder="요즘 막히는 지점이나 잘 모르겠는 부분을 적어두세요"
-                {...register("unknowns")}
-              />
+              <Textarea rows={4} {...register("unknowns")} />
+              {errors.unknowns && (
+                <ErrorMessage>{errors.unknowns.message}</ErrorMessage>
+              )}
               <div style={{ marginTop: "12px" }}>
                 <Button variant="secondary" theme={theme} type="button">
                   <SparklesIcon />
@@ -622,15 +716,11 @@ export default function GuardRailWriter() {
           </Card>
 
           <div style={{ display: "flex", justifyContent: "flex-end" }}>
-            <Button
-              theme={theme}
-              type="button" // submit에서 button으로 변경
-              onClick={handleSaveClick} // 클릭 핸들러 추가
-            >
-              오늘의 가드레일 저장
+            <Button theme={theme} type="submit" disabled={loading}>
+              {loading ? "저장 중..." : "오늘의 가드레일 저장"}
             </Button>
           </div>
-        </FormContainer>
+        </form>
       </ContentWrapper>
 
       {/* 모달 렌더링 */}

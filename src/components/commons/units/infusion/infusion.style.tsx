@@ -49,7 +49,14 @@ export const COLORWAYS: Record<
     emphCard: "rgba(224, 242, 254, 0.7)",
   },
 };
-
+// 에러 메시지 컴포넌트
+export const ErrorMessage = styled.div`
+  color: #ef4444;
+  font-size: 12px;
+  margin-top: 4px;
+  font-weight: 500;
+  line-height: 1.4;
+`;
 // Container
 export const Container = styled.div<{ gradient: string }>`
   min-height: 93vh;

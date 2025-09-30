@@ -352,3 +352,12 @@ export const Fab = styled.button<{ theme: any }>`
     display: grid;
   }
 `;
+
+// 에러 메시지 컴포넌트
+export const ErrorMessage = styled.div`
+  color: #ef4444;
+  font-size: 12px;
+  margin-top: 4px;
+  font-weight: 500;
+  line-height: 1.4;
+`;
