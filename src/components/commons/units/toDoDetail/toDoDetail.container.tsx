@@ -1,5 +1,12 @@
 import React, { useState, useEffect } from "react";
 import { useRouter } from "next/router";
+import { useQuery, useMutation } from "@apollo/client";
+import {
+  FETCH_TODO,
+  DELETE_TODO,
+} from "../../../../commons/apis/graphql-queries";
+import CheckModal from "../../../commons/modals/checkModal";
+import AlertModal from "../../../commons/modals/alertModal";
 import {
   Container,
   TopAppBar,
@@ -89,62 +96,60 @@ const COLORWAYS: Record<
   },
 };
 
-// ─── Sample Todo Detail Data ─────────────────────────────
-const SAMPLE_TODO_DETAIL = {
-  id: 6,
-  title: "아침 운동하기",
-  time: "7:00 AM",
-  icon: "🏃",
-  iconColor: "#16a34a",
-  backgroundColor: "#dcfce7",
-  description:
-    "매일 아침 30분간 조깅을 통해 하루를 활기차게 시작합니다. 공원에서 신선한 공기를 마시며 건강한 생활 습관을 만들어가고 있습니다.",
-  status: "completed",
-  priority: "high",
-  tags: ["건강", "운동", "아침루틴"],
-  createdAt: "2025-08-21",
-  updatedAt: "2025-08-21",
-  location: "한강공원",
-  estimatedDuration: "30분",
-  notes: "운동화와 물병 준비 필수",
-};
+// Todo 타입 정의 (GraphQL 스키마와 일치)
+interface Todo {
+  id: string;
+  title: string;
+  description?: string; // description 필드 추가
+  date: string;
+  startTime: string;
+  endTime: string;
+  priority: "LOW" | "MEDIUM" | "HIGH";
+  repeatType?: string;
+  repeatUntil?: string;
+  isRepeating: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
 
-// ─── Main Component ─────────────────────────────
+// GraphQL 응답 타입 정의
+interface FetchTodoResponse {
+  fetchTodo: Todo;
+}
+
 export default function ToDoDetailContainer() {
   const router = useRouter();
-  const { id } = router.query;
-  // ─── 초기 상태 변경 ─────────────────────────────
-  const [todoDetail, setTodoDetail] = useState<any>(SAMPLE_TODO_DETAIL); // 초기값 설정
-  const [isLoading, setIsLoading] = useState(false); // 초기값을 false로 변경
-  const [error, setError] = useState("");
+  const { todoId } = router.query;
   const [colorway, setColorway] = useState<keyof typeof COLORWAYS>("forest");
   const theme = COLORWAYS[colorway];
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [showSuccessModal, setShowSuccessModal] = useState(false);
+  const [showErrorModal, setShowErrorModal] = useState(false);
+  const [errorMessage, setErrorMessage] = useState("");
 
-  // ─── Load Todo Detail ─────────────────────────────
-  useEffect(() => {
-    const loadTodoDetail = async () => {
-      // setIsLoading(true); // 로딩 상태 제거
-      setError("");
+  // GraphQL 쿼리로 투두 상세 조회 (타입 적용)
+  const { data, loading, error } = useQuery<FetchTodoResponse>(FETCH_TODO, {
+    variables: { todoId: todoId as string },
+    skip: !todoId,
+  });
 
-      try {
-        // 실제 API 호출 시에는 이렇게 사용
-        // const response = await API.get(`/todos/${id}`);
-        // setTodoDetail(response.data);
+  // 투두 삭제 mutation
+  const [deleteTodo, { loading: isDeleting }] = useMutation(DELETE_TODO, {
+    onCompleted: () => {
+      setShowDeleteModal(false);
+      setShowSuccessModal(true);
+    },
+    onError: (error) => {
+      console.error("Delete error:", error);
+      setShowDeleteModal(false);
+      setErrorMessage(error.message);
+      setShowErrorModal(true);
+    },
+  });
 
-        // 샘플 데이터를 즉시 설정
-        setTodoDetail(SAMPLE_TODO_DETAIL);
-        // setIsLoading(false); // 로딩 상태 제거
-      } catch (error: any) {
-        console.error("Todo detail loading error:", error);
-        setError("할 일 상세 정보를 불러오는데 실패했습니다");
-        // setIsLoading(false); // 로딩 상태 제거
-      }
-    };
-
-    if (id) {
-      loadTodoDetail();
-    }
-  }, [id]);
+  console.log("data", data);
+  // 이제 data?.fetchTodo는 Todo 타입으로 인식됨
+  const todo: Todo | undefined = data?.fetchTodo;
 
   // ─── Navigation Handlers ─────────────────────────────
   const handleBack = () => {
@@ -152,37 +157,35 @@ export default function ToDoDetailContainer() {
   };
 
   const handleEdit = () => {
-    router.push(`/todo/edit/${id}`);
+    router.push(`/todoList/${todoId}/edit`);
   };
 
-  const handleDelete = async () => {
-    if (confirm("정말로 이 할 일을 삭제하시겠습니까?")) {
-      try {
-        // 실제 API 호출 시에는 이렇게 사용
-        // await API.delete(`/todos/${id}`);
-
-        alert("할 일이 삭제되었습니다");
-        router.push("/todo");
-      } catch (error) {
-        console.error("Delete error:", error);
-        alert("삭제 중 오류가 발생했습니다");
-      }
-    }
+  const handleDeleteClick = () => {
+    setShowDeleteModal(true);
   };
 
-  const handleComplete = async () => {
+  const handleDeleteConfirm = async () => {
     try {
-      // 실제 API 호출 시에는 이렇게 사용
-      // await API.patch(`/todos/${id}`, { status: "completed" });
-
-      setTodoDetail({
-        ...todoDetail,
-        status: todoDetail.status === "completed" ? "pending" : "completed",
+      await deleteTodo({
+        variables: { todoId: todoId as string },
       });
     } catch (error) {
-      console.error("Complete error:", error);
-      alert("상태 변경 중 오류가 발생했습니다");
+      console.error("Delete error:", error);
     }
+  };
+
+  const handleDeleteCancel = () => {
+    setShowDeleteModal(false);
+  };
+
+  const handleSuccessModalClose = () => {
+    setShowSuccessModal(false);
+    router.push("/todoList");
+  };
+
+  const handleErrorModalClose = () => {
+    setShowErrorModal(false);
+    setErrorMessage("");
   };
 
   // ─── Format Date ─────────────────────────────
@@ -196,36 +199,59 @@ export default function ToDoDetailContainer() {
     });
   };
 
-  // ─── Get Status Text ─────────────────────────────
-  const getStatusText = (status: string) => {
-    switch (status) {
-      case "completed":
-        return "완료";
-      case "in-progress":
-        return "진행중";
-      case "pending":
-        return "대기중";
-      default:
-        return "알 수 없음";
+  // ─── Format Time ─────────────────────────────
+  const formatTime = (startTime: string, endTime: string) => {
+    if (!startTime) return "시간 미정";
+    if (endTime) {
+      return `${startTime} - ${endTime}`;
     }
+    return startTime;
   };
 
   // ─── Get Priority Text ─────────────────────────────
   const getPriorityText = (priority: string) => {
     switch (priority) {
-      case "high":
+      case "HIGH":
         return "높음";
-      case "medium":
+      case "MEDIUM":
         return "보통";
-      case "low":
+      case "LOW":
         return "낮음";
       default:
         return "보통";
     }
   };
 
+  // ─── Get Priority Color ─────────────────────────────
+  const getPriorityColor = (priority: string) => {
+    switch (priority) {
+      case "HIGH":
+        return "#e11d48";
+      case "MEDIUM":
+        return "#f97316";
+      case "LOW":
+        return "#16a34a";
+      default:
+        return "#6b7280";
+    }
+  };
+
+  // ─── Get Repeat Type Text ─────────────────────────────
+  const getRepeatTypeText = (repeatType: string) => {
+    switch (repeatType) {
+      case "daily":
+        return "매일";
+      case "weekly":
+        return "매주";
+      case "monthly":
+        return "매월";
+      default:
+        return "반복 없음";
+    }
+  };
+
   // ─── Loading State ─────────────────────────────
-  if (isLoading) {
+  if (loading) {
     return (
       <Container gradient={theme.gradient}>
         <TopAppBar>
@@ -269,14 +295,18 @@ export default function ToDoDetailContainer() {
         </TopAppBar>
 
         <ContentWrapper>
-          <ErrorMessage>{error}</ErrorMessage>
+          <EmptyState>
+            <EmptyIcon>❌</EmptyIcon>
+            <EmptyTitle>할 일을 불러올 수 없습니다</EmptyTitle>
+            <EmptyDescription>{error.message}</EmptyDescription>
+          </EmptyState>
         </ContentWrapper>
       </Container>
     );
   }
 
   // ─── Empty State ─────────────────────────────
-  if (!todoDetail) {
+  if (!todo) {
     return (
       <Container gradient={theme.gradient}>
         <TopAppBar>
@@ -306,19 +336,60 @@ export default function ToDoDetailContainer() {
   // ─── Main Content ─────────────────────────────
   return (
     <Container gradient={theme.gradient}>
+      {/* 삭제 확인 모달 */}
+      <CheckModal
+        isOpen={showDeleteModal}
+        onClose={handleDeleteCancel}
+        onConfirm={handleDeleteConfirm}
+        title="할 일 삭제"
+        message={`정말로 이 할 일을 삭제하시겠습니까?`}
+        confirmText="🗑️ 삭제"
+        cancelText="취소"
+        isLoading={isDeleting}
+        type="danger"
+        theme={theme}
+      />
+
+      {/* 삭제 성공 모달 */}
+      <AlertModal
+        isOpen={showSuccessModal}
+        onClose={handleSuccessModalClose}
+        title="삭제 완료"
+        message="할 일이 성공적으로 삭제되었습니다."
+        buttonText="확인"
+        type="success"
+        theme={theme}
+      />
+
+      {/* 삭제 에러 모달 */}
+      <AlertModal
+        isOpen={showErrorModal}
+        onClose={handleErrorModalClose}
+        title="삭제 실패"
+        message={`삭제 중 오류가 발생했습니다.\n${errorMessage}`}
+        buttonText="확인"
+        type="error"
+        theme={theme}
+      />
+
       <TopAppBar>
         <AppBarContent>
           <BackButton onClick={handleBack}>←</BackButton>
           <AppInfo>
             <AppTitle>할 일 상세</AppTitle>
-            <AppSubtitle>{todoDetail.title}</AppSubtitle>
+            <AppSubtitle>{todo.title}</AppSubtitle>
           </AppInfo>
           <ActionButtons>
-            <ActionButton onClick={handleEdit} title="수정">
-              ✏️
-            </ActionButton>
-            <ActionButton onClick={handleDelete} title="삭제">
-              🗑️
+            <ActionButton
+              onClick={handleDeleteClick}
+              title="삭제"
+              disabled={isDeleting}
+              style={{
+                opacity: isDeleting ? 0.6 : 1,
+                cursor: isDeleting ? "not-allowed" : "pointer",
+              }}
+            >
+              {isDeleting ? "⏳" : "🗑️"}
             </ActionButton>
           </ActionButtons>
         </AppBarContent>
@@ -327,99 +398,74 @@ export default function ToDoDetailContainer() {
       <ContentWrapper>
         <DetailCard>
           <DetailHeader>
-            <DetailIcon
-              backgroundColor={todoDetail.backgroundColor}
-              color={todoDetail.iconColor}
-            >
-              {todoDetail.icon}
-            </DetailIcon>
             <div>
-              <DetailTitle>{todoDetail.title}</DetailTitle>
+              <DetailTitle>{todo.title}</DetailTitle>
               <div style={{ display: "flex", gap: "8px", marginTop: "8px" }}>
-                <StatusBadge status={todoDetail.status}>
-                  {getStatusText(todoDetail.status)}
-                </StatusBadge>
-                <PriorityBadge priority={todoDetail.priority}>
-                  {getPriorityText(todoDetail.priority)}
+                <PriorityBadge priority={todo.priority.toLowerCase()}>
+                  우선순위 {getPriorityText(todo.priority)}
                 </PriorityBadge>
+                {todo.isRepeating && (
+                  <StatusBadge status="repeating">
+                    🔁 {getRepeatTypeText(todo.repeatType || "")}
+                  </StatusBadge>
+                )}
               </div>
             </div>
           </DetailHeader>
 
           <DetailMeta>
-            <MetaItem>
-              <MetaIcon>🕐</MetaIcon>
-              <DateInfo>
-                <DateText>{todoDetail.time}</DateText>
-                <TimeText>예정 시간</TimeText>
-              </DateInfo>
-            </MetaItem>
-
-            {todoDetail.location && (
-              <MetaItem>
-                <MetaIcon>🗺️</MetaIcon>
-                <MetaText>{todoDetail.location}</MetaText>
-              </MetaItem>
+            {/* Description 섹션 추가 */}
+            {todo.description && (
+              <DetailDescription>
+                <DescriptionText>{todo.description}</DescriptionText>
+              </DetailDescription>
             )}
-
-            {todoDetail.estimatedDuration && (
-              <MetaItem>
-                <MetaIcon>⏱️</MetaIcon>
-                <MetaText>
-                  예상 소요시간: {todoDetail.estimatedDuration}
-                </MetaText>
-              </MetaItem>
-            )}
-
             <MetaItem>
               <MetaIcon>📅</MetaIcon>
               <DateInfo>
-                <DateText>생성: {formatDate(todoDetail.createdAt)}</DateText>
-                <TimeText>수정: {formatDate(todoDetail.updatedAt)}</TimeText>
+                <DateText>{formatDate(todo.date)}</DateText>
+                <TimeText>날짜</TimeText>
               </DateInfo>
             </MetaItem>
+
+            <MetaItem>
+              <MetaIcon>🕐</MetaIcon>
+              <DateInfo>
+                <DateText>{formatTime(todo.startTime, todo.endTime)}</DateText>
+                <TimeText>시간</TimeText>
+              </DateInfo>
+            </MetaItem>
+
+            {todo.isRepeating && todo.repeatType && (
+              <MetaItem>
+                <MetaIcon>🔁</MetaIcon>
+                <MetaText>
+                  반복: {getRepeatTypeText(todo.repeatType)}
+                  {todo.repeatUntil &&
+                    ` (종료: ${formatDate(todo.repeatUntil)})`}
+                </MetaText>
+              </MetaItem>
+            )}
           </DetailMeta>
 
-          {todoDetail.tags && todoDetail.tags.length > 0 && (
-            <TagsContainer>
-              {todoDetail.tags.map((tag: string, index: number) => (
-                <Tag key={index}>{tag}</Tag>
-              ))}
-            </TagsContainer>
-          )}
-
-          {todoDetail.description && (
-            <DetailDescription>
-              <DescriptionTitle>설명</DescriptionTitle>
-              <DescriptionText>{todoDetail.description}</DescriptionText>
-            </DetailDescription>
-          )}
-
-          {todoDetail.notes && (
-            <DetailDescription>
-              <DescriptionTitle>메모</DescriptionTitle>
-              <DescriptionText>{todoDetail.notes}</DescriptionText>
-            </DetailDescription>
-          )}
-          {/* 
           <DetailActions>
-            <ActionButtonLarge
-              variant="secondary"
-              theme={theme}
-              onClick={handleComplete}
-            >
-              {todoDetail.status === "completed"
-                ? "미완료로 변경"
-                : "완료로 변경"}
-            </ActionButtonLarge>
             <ActionButtonLarge
               variant="primary"
               theme={theme}
               onClick={handleEdit}
+              disabled={isDeleting}
             >
               수정하기
             </ActionButtonLarge>
-          </DetailActions> */}
+            <ActionButtonLarge
+              variant="secondary"
+              theme={theme}
+              onClick={() => router.push("/todoList")}
+              disabled={isDeleting}
+            >
+              목록으로
+            </ActionButtonLarge>
+          </DetailActions>
         </DetailCard>
       </ContentWrapper>
     </Container>

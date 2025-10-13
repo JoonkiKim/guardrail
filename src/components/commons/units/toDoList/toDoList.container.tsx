@@ -1,5 +1,7 @@
 import { useState, useMemo, useRef, useEffect, Fragment } from "react";
 import { useRouter } from "next/router";
+import { useQuery } from "@apollo/client";
+import { FETCH_TODOS_BY_MONTH } from "../../../../commons/apis/graphql-queries";
 import {
   Container,
   TopAppBar,
@@ -92,166 +94,59 @@ const COLORWAYS: Record<
   },
 };
 
-// 샘플 이벤트 데이터 (2025년 8월 기준)
-const SAMPLE_EVENTS = [
-  {
-    id: 1,
-    date: new Date(2025, 7, 19), // August 19, 2025
-    dayName: "Tuesday",
-    events: [
-      {
-        id: 1,
-        title: "Fuminori x Plato/tiro (Damien, Evan, Yur",
-        time: "2-3 PM",
-        icon: "f",
-        iconColor: "#f97316",
-        backgroundColor: "#fef3c7",
-      },
-      {
-        id: 2,
-        title: "damien<>yuna",
-        time: "4-6 PM",
-        icon: "y",
-        iconColor: "#16a34a",
-        backgroundColor: "#dcfce7",
-      },
-      {
-        id: 3,
-        title: "Foundation Reading",
-        time: "8-10 PM",
-        icon: "📖",
-        iconColor: "#16a34a",
-        backgroundColor: "#dcfce7",
-        isWide: true,
-        description: "Open book icon with abstract shapes",
-      },
-    ],
-  },
-  {
-    id: 2,
-    date: new Date(2025, 7, 20), // August 20, 2025
-    dayName: "Wednesday",
-    events: [
-      {
-        id: 4,
-        title: "Damien <> Luke",
-        time: "9-9:45 AM",
-        icon: "👤",
-        iconColor: "#3b82f6",
-        backgroundColor: "#dbeafe",
-      },
-      {
-        id: 5,
-        title: "Damien <> Luke",
-        time: "9-9:45 AM",
-        icon: "👤",
-        iconColor: "#8b5a3c",
-        backgroundColor: "#fef3c7",
-      },
-    ],
-  },
-  {
-    id: 3,
-    date: new Date(2025, 7, 21), // August 21, 2025 (오늘 날짜)
-    dayName: "Thursday",
-    events: [
-      {
-        id: 6,
-        title: "아침 운동하기",
-        time: "7:00 AM",
-        icon: "🏃",
-        iconColor: "#16a34a",
-        backgroundColor: "#dcfce7",
-      },
-      {
-        id: 7,
-        title: "이메일 확인",
-        time: "9:00 AM",
-        icon: "📧",
-        iconColor: "#3b82f6",
-        backgroundColor: "#dbeafe",
-      },
-      {
-        id: 8,
-        title: "점심 약속",
-        time: "12:00 PM",
-        icon: "🍽️",
-        iconColor: "#f97316",
-        backgroundColor: "#fef3c7",
-      },
-      {
-        id: 9,
-        title: "회의 준비",
-        time: "2:00 PM",
-        icon: "📋",
-        iconColor: "#8b5a3c",
-        backgroundColor: "#fef3c7",
-      },
-      {
-        id: 10,
-        title: "저녁 식사",
-        time: "7:00 PM",
-        icon: "🍽️",
+// Todo 타입 정의 (GraphQL 스키마와 일치)
+interface Todo {
+  id: string;
+  title: string;
+  date: string;
+  startTime: string;
+  endTime: string;
+  priority: "LOW" | "MEDIUM" | "HIGH";
+  repeatType?: string;
+  repeatUntil?: string;
+  isRepeating: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
+// 우선순위에 따른 아이콘과 색상 매핑
+const getPriorityConfig = (priority: string) => {
+  switch (priority) {
+    case "HIGH":
+      return {
+        icon: "🔴",
         iconColor: "#e11d48",
         backgroundColor: "#fce7f3",
-      },
-    ],
-  },
-  {
-    id: 4,
-    date: new Date(2025, 7, 22), // August 22, 2025
-    dayName: "Friday",
-    events: [
-      {
-        id: 11,
-        title: "Team Retro",
-        time: "5-6 PM",
-        icon: "👤",
-        iconColor: "#8b5a3c",
+      };
+    case "MEDIUM":
+      return {
+        icon: "🟡",
+        iconColor: "#f97316",
         backgroundColor: "#fef3c7",
-      },
-    ],
-  },
-  {
-    id: 5,
-    date: new Date(2025, 7, 25), // August 25, 2025
-    dayName: "Monday",
-    events: [
-      {
-        id: 12,
-        title: "Weekly Sync",
-        time: "5:30-6 PM",
-        icon: "y",
+      };
+    case "LOW":
+      return {
+        icon: "🟢",
         iconColor: "#16a34a",
-        backgroundColor: "#fef3c7",
-      },
-    ],
-  },
-  {
-    id: 6,
-    date: new Date(2025, 7, 27), // August 27, 2025
-    dayName: "Wednesday",
-    events: [
-      {
-        id: 13,
-        title: "Damien <> Luke",
-        time: "9-9:45 AM",
-        icon: "👤",
-        iconColor: "#3b82f6",
-        backgroundColor: "white",
-        borderColor: "#3b82f6",
-      },
-      {
-        id: 14,
-        title: "Damien <> Luke",
-        time: "9-9:45 AM",
-        icon: "👤",
-        iconColor: "#8b5a3c",
-        backgroundColor: "#fef3c7",
-      },
-    ],
-  },
-];
+        backgroundColor: "#dcfce7",
+      };
+    default:
+      return {
+        icon: "📝",
+        iconColor: "#6b7280",
+        backgroundColor: "#f5f5f4",
+      };
+  }
+};
+
+// 시간 포맷팅 함수
+const formatTime = (startTime: string, endTime: string) => {
+  if (!startTime) return "";
+  if (endTime) {
+    return `${startTime} - ${endTime}`;
+  }
+  return startTime;
+};
 
 export default function TodoListPage() {
   const router = useRouter();
@@ -259,12 +154,29 @@ export default function TodoListPage() {
   const theme = COLORWAYS[colorway];
   const [currentMonth, setCurrentMonth] = useState(new Date());
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
-  const [isNavigating, setIsNavigating] = useState(false); // 네비게이션 상태 추가
+  const [isNavigating, setIsNavigating] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
-  const todayRef = useRef<HTMLDivElement>(null); // 오늘 날짜 ref 추가
+  const todayRef = useRef<HTMLDivElement>(null);
 
   // 현재 날짜
   const today = useMemo(() => new Date(), []);
+
+  // GraphQL 쿼리로 월별 투두 조회
+  const { data, loading, error, refetch } = useQuery(FETCH_TODOS_BY_MONTH, {
+    variables: {
+      year: currentMonth.getFullYear(),
+      month: currentMonth.getMonth() + 1, // JavaScript month는 0부터 시작하므로 +1
+    },
+    notifyOnNetworkStatusChange: true,
+  });
+
+  // 월 변경 시 데이터 다시 조회
+  useEffect(() => {
+    refetch({
+      year: currentMonth.getFullYear(),
+      month: currentMonth.getMonth() + 1,
+    });
+  }, [currentMonth, refetch]);
 
   // 드롭다운 외부 클릭 시 닫기
   useEffect(() => {
@@ -387,10 +299,46 @@ export default function TodoListPage() {
     router.push("/todoAdd"); // /todoAdd 페이지로 이동
   };
 
-  // 이벤트 클릭 핸들러
-  const handleEventClick = (eventId: number) => {
-    console.log("이벤트 클릭:", eventId);
-    // TODO: 이벤트 상세 페이지로 이동
+  // 투두 데이터를 날짜별로 그룹화
+  const todosByDate = useMemo(() => {
+    if (!data?.fetchTodosByMonth) return [];
+
+    const grouped = data.fetchTodosByMonth.reduce((acc: any, todo: Todo) => {
+      const todoDate = new Date(todo.date);
+      const dateKey = todoDate.toDateString();
+
+      if (!acc[dateKey]) {
+        acc[dateKey] = {
+          date: todoDate,
+          dayName: todoDate.toLocaleDateString("en-US", { weekday: "short" }), // 영어 3글자로 변경
+          todos: [],
+        };
+      }
+
+      acc[dateKey].todos.push({
+        id: todo.id,
+        title: todo.title,
+        time: formatTime(todo.startTime, todo.endTime),
+        priority: todo.priority,
+        ...getPriorityConfig(todo.priority),
+        isRepeating: todo.isRepeating,
+        repeatType: todo.repeatType,
+      });
+
+      return acc;
+    }, {});
+
+    // 날짜순으로 정렬
+    return Object.values(grouped).sort(
+      (a: any, b: any) => a.date.getTime() - b.date.getTime()
+    );
+  }, [data]);
+
+  // 이벤트 클릭 핸들러 (투두 상세로 이동)
+  const handleTodoClick = (todoId: string) => {
+    console.log("투두 클릭:", todoId);
+    setIsNavigating(true);
+    router.push(`/todoList/${todoId}`);
   };
 
   // 라우터 이벤트 리스너 추가
@@ -407,14 +355,14 @@ export default function TodoListPage() {
       setIsNavigating(false);
     };
 
-    router.events.on('routeChangeStart', handleRouteChangeStart);
-    router.events.on('routeChangeComplete', handleRouteChangeComplete);
-    router.events.on('routeChangeError', handleRouteChangeError);
+    router.events.on("routeChangeStart", handleRouteChangeStart);
+    router.events.on("routeChangeComplete", handleRouteChangeComplete);
+    router.events.on("routeChangeError", handleRouteChangeError);
 
     return () => {
-      router.events.off('routeChangeStart', handleRouteChangeStart);
-      router.events.off('routeChangeComplete', handleRouteChangeComplete);
-      router.events.off('routeChangeError', handleRouteChangeError);
+      router.events.off("routeChangeStart", handleRouteChangeStart);
+      router.events.off("routeChangeComplete", handleRouteChangeComplete);
+      router.events.off("routeChangeError", handleRouteChangeError);
     };
   }, [router.events]);
 
@@ -426,7 +374,9 @@ export default function TodoListPage() {
           <BackButton onClick={handleBack}>←</BackButton>
           <AppInfo>
             <AppTitle>TO-DO</AppTitle>
-            <AppSubtitle>할 일을 관리해보세요</AppSubtitle>
+            <AppSubtitle>
+              {loading ? "로딩 중..." : "할 일을 관리해보세요"}
+            </AppSubtitle>
           </AppInfo>
           <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
             <MonthSelector ref={dropdownRef} onClick={handleDropdownToggle}>
@@ -463,91 +413,101 @@ export default function TodoListPage() {
 
       {/* Content */}
       <ContentWrapper>
-        <EventList>
-          {SAMPLE_EVENTS.map((dayGroup, index) => {
-            const isToday =
-              dayGroup.date.toDateString() === today.toDateString();
+        {/* 로딩 상태 */}
+        {loading && (
+          <EmptyState>
+            <EmptyIcon>⏳</EmptyIcon>
+            <EmptyTitle>투두를 불러오는 중...</EmptyTitle>
+            <EmptyDescription>
+              {currentMonth.getFullYear()}년 {currentMonth.getMonth() + 1}월
+              투두를 조회하고 있습니다
+            </EmptyDescription>
+          </EmptyState>
+        )}
 
-            return (
-              <Fragment key={dayGroup.id}>
-                {/* 주간 구분선 (첫 번째 그룹이 아니고 월이 바뀌는 경우) */}
-                {index > 0 &&
-                  dayGroup.date.getMonth() !==
-                    SAMPLE_EVENTS[index - 1].date.getMonth() && (
-                    <WeekSeparator>
-                      <SeparatorText>
-                        {dayGroup.date
-                          .toLocaleDateString("en-US", {
-                            month: "long",
-                            year: "numeric",
-                          })
-                          .toUpperCase()}{" "}
-                        {dayGroup.date.getDate()} -{" "}
-                        {dayGroup.date.getDate() + 6}
-                      </SeparatorText>
-                      <SeparatorLine />
-                    </WeekSeparator>
-                  )}
+        {/* 에러 상태 */}
+        {error && (
+          <EmptyState>
+            <EmptyIcon>❌</EmptyIcon>
+            <EmptyTitle>투두를 불러올 수 없습니다</EmptyTitle>
+            <EmptyDescription>{error.message}</EmptyDescription>
+          </EmptyState>
+        )}
 
-                <DayGroup
-                  ref={isToday ? todayRef : null} // 오늘 날짜에만 ref 추가
-                >
-                  <DayHeader>
-                    <DayCircle isToday={isToday}>
-                      <DayName>{dayGroup.dayName.slice(0, 3)}</DayName>
-                      <DayNumber>{dayGroup.date.getDate()}</DayNumber>
-                    </DayCircle>
-                    {/* <DayInfo>
-                      <DayLabel>{dayGroup.dayName}</DayLabel>
-                      <DayDate>{dayGroup.date.getDate()}</DayDate>
-                    </DayInfo> */}
-                  </DayHeader>
+        {/* 투두 목록 */}
+        {!loading && !error && (
+          <EventList>
+            {todosByDate.map((dayGroup: any, index: number) => {
+              const isToday =
+                dayGroup.date.toDateString() === today.toDateString();
 
-                  {dayGroup.events.map((event) => (
-                    <EventCard
-                      key={event.id}
-                      backgroundColor={event.backgroundColor}
-                      borderColor={event.borderColor}
-                      isWide={event.isWide}
-                      onClick={() => handleEventClick(event.id)}
-                    >
-                      {/* <EventIcon
-                        backgroundColor={event.iconColor}
-                        color="white"
+              return (
+                <Fragment key={dayGroup.date.toISOString()}>
+                  {/* 주간 구분선 */}
+                  {index > 0 &&
+                    dayGroup.date.getMonth() !==
+                      (todosByDate[index - 1] as any).date.getMonth() && (
+                      <WeekSeparator>
+                        <SeparatorText>
+                          {dayGroup.date
+                            .toLocaleDateString("en-US", {
+                              month: "long",
+                              year: "numeric",
+                            })
+                            .toUpperCase()}{" "}
+                          {dayGroup.date.getDate()} -{" "}
+                          {dayGroup.date.getDate() + 6}
+                        </SeparatorText>
+                        <SeparatorLine />
+                      </WeekSeparator>
+                    )}
+
+                  <DayGroup ref={isToday ? todayRef : null}>
+                    <DayHeader>
+                      <DayCircle isToday={isToday}>
+                        <DayName>{dayGroup.dayName.slice(0, 3)}</DayName>
+                        <DayNumber>{dayGroup.date.getDate()}</DayNumber>
+                      </DayCircle>
+                    </DayHeader>
+
+                    {dayGroup.todos.map((todo: any) => (
+                      <EventCard
+                        key={todo.id}
+                        backgroundColor={todo.backgroundColor}
+                        onClick={() => handleTodoClick(todo.id)}
                       >
-                        {event.icon}
-                      </EventIcon> */}
-                      <EventContent>
-                        <EventTitle>{event.title}</EventTitle>
-                        <EventTime>{event.time}</EventTime>
-                        {event.description && (
-                          <EventDescription>
-                            {event.description}
-                          </EventDescription>
-                        )}
-                      </EventContent>
-                    </EventCard>
-                  ))}
-                </DayGroup>
-              </Fragment>
-            );
-          })}
+                        <EventContent>
+                          <EventTitle>{todo.title}</EventTitle>
+                          <EventTime>{todo.time}</EventTime>
+                          {todo.isRepeating && (
+                            <EventDescription>
+                              🔁 {todo.repeatType} 반복
+                            </EventDescription>
+                          )}
+                        </EventContent>
+                      </EventCard>
+                    ))}
+                  </DayGroup>
+                </Fragment>
+              );
+            })}
 
-          {/* 빈 상태 (이벤트가 없을 때) */}
-          {SAMPLE_EVENTS.length === 0 && (
-            <EmptyState>
-              <EmptyIcon>📅</EmptyIcon>
-              <EmptyTitle>이번 달 일정이 없어요</EmptyTitle>
-              <EmptyDescription>
-                새로운 투두를 추가해서 계획을 세워보세요
-              </EmptyDescription>
-            </EmptyState>
-          )}
-        </EventList>
+            {/* 빈 상태 (투두가 없을 때) */}
+            {todosByDate.length === 0 && !loading && (
+              <EmptyState>
+                <EmptyIcon>📅</EmptyIcon>
+                <EmptyTitle>이번 달 일정이 없어요</EmptyTitle>
+                <EmptyDescription>
+                  새로운 투두를 추가해서 계획을 세워보세요
+                </EmptyDescription>
+              </EmptyState>
+            )}
+          </EventList>
+        )}
       </ContentWrapper>
 
       {/* Floating Action Button - 로딩 중일 때 숨김 */}
-      {!isNavigating && (
+      {!isNavigating && !loading && (
         <FloatingActionButton theme={theme} onClick={handleAddTodo}>
           <PlusIcon />
         </FloatingActionButton>

@@ -179,7 +179,7 @@ export default function InfusionContainer({
   };
 
   const handleInfusionClick = (infusionId: string) => {
-    router.push(`/infusion/infusionDetail?id=${infusionId}`);
+    router.push(`/infusion/${infusionId}`);
   };
 
   // 카테고리 선택 핸들러

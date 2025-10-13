@@ -104,7 +104,7 @@ export default function GuardRailListPage() {
   const handleCardClick = (id: string) => {
     console.log("가드레일 클릭:", id);
     // TODO: 상세 페이지로 이동
-    // router.push(`/guardRail/${id}`);
+    router.push(`/guardRailList/${id}`);
   };
 
   // 날짜 포맷팅

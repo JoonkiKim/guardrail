@@ -1,5 +1,13 @@
 import React, { useState, useEffect } from "react";
 import { useRouter } from "next/router";
+import { useQuery, useMutation } from "@apollo/client";
+import {
+  FETCH_GUARDRAIL,
+  DELETE_GUARDRAIL,
+  FETCH_GUARDRAILS,
+} from "../../../../commons/apis/graphql-queries";
+import CheckModal from "../../../commons/modals/checkModal";
+import AlertModal from "../../../commons/modals/alertModal";
 import {
   Container,
   TopAppBar,
@@ -95,77 +103,62 @@ const COLORWAYS: Record<
   },
 };
 
-// ─── Sample GuardRail Detail Data ─────────────────────────────
-const SAMPLE_GUARDRAIL_DETAIL = {
-  id: 1,
-  title: "2025년 8월 21일 가드레일",
-  subtitle: "하루의 성찰과 내일을 위한 준비",
-  date: "2025-08-21",
-  status: "completed",
-  icon: "🛡️",
-  sections: {
-    yesterday: {
-      mood: "오늘은 새로운 프로젝트를 시작하면서 기대감과 약간의 긴장감이 있었습니다. 팀원들과의 협업이 잘 이루어져서 만족스러운 하루였습니다.",
-      important: "새로운 프로젝트의 초기 기획과 팀원들과의 브레인스토밍",
-      events:
-        "오전에 클라이언트 미팅, 오후에 개발팀과의 협업 회의, 저녁에 개인 프로젝트 진행",
-      gratitude:
-        "팀원들의 적극적인 참여와 아이디어 공유, 좋은 날씨와 건강한 몸 상태",
-      regrets:
-        "시간 관리가 조금 부족했고, 개인적인 운동 시간을 확보하지 못한 점",
-      direction:
-        "현재 진행 중인 프로젝트를 성공적으로 완료하고, 팀원들과의 협업을 더욱 강화하는 것이 목표입니다. 개인적인 성장과 건강 관리에도 더 신경 써야겠습니다.",
-      progress:
-        "새로운 기술 스택을 학습했고, 팀원들과의 소통이 개선되었습니다.",
-      unknowns:
-        "새로운 프로젝트의 예상치 못한 기술적 도전과 시장 반응에 대한 우려",
-    },
-    pavlov: [
-      { stimulus: "거의 모든 상황", response: "10초 세며 숨 고르기" },
-      { stimulus: "감정적 동요", response: '"이건 무슨 감정인가?"' },
-      {
-        stimulus: "갈등",
-        response: '"내가 맞다는 걸 증명해야 할 필요가 정말 있는가?"',
-      },
-      { stimulus: "소비 충동", response: '"좋다. 근데 필요하진 않다."' },
-    ],
-  },
-};
+// GuardRail 타입 정의 (GraphQL 스키마와 일치)
+interface GuardRail {
+  id: string;
+  feeling: string;
+  mostImpt: string;
+  diary: string;
+  thanks: string;
+  direction: string;
+  oneStep: string;
+  ignorance: string;
+  createdAt: string;
+  updatedAt: string;
+}
 
 // ─── Main Component ─────────────────────────────
 export default function GuardRailDetailContainer() {
   const router = useRouter();
-  const { id } = router.query;
-  const [guardRailDetail, setGuardRailDetail] = useState<any>(
-    SAMPLE_GUARDRAIL_DETAIL
-  );
-  const [isLoading, setIsLoading] = useState(false);
-  const [error, setError] = useState("");
+  const { guardRailId } = router.query;
   const [colorway, setColorway] = useState<keyof typeof COLORWAYS>("forest");
   const theme = COLORWAYS[colorway];
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [showDeleteSuccessModal, setShowDeleteSuccessModal] = useState(false);
+  const [showDeleteErrorModal, setShowDeleteErrorModal] = useState(false);
+  const [deleteErrorMessage, setDeleteErrorMessage] = useState("");
 
-  // ─── Load GuardRail Detail ─────────────────────────────
-  useEffect(() => {
-    const loadGuardRailDetail = async () => {
-      setError("");
+  // GraphQL 쿼리로 가드레일 상세 조회
+  const { data, loading, error } = useQuery(FETCH_GUARDRAIL, {
+    variables: { guardrailId: guardRailId as string },
+    skip: !guardRailId,
+  });
 
-      try {
-        // 실제 API 호출 시에는 이렇게 사용
-        // const response = await API.get(`/guardrails/${id}`);
-        // setGuardRailDetail(response.data);
-
-        // 현재는 샘플 데이터 사용
-        setGuardRailDetail(SAMPLE_GUARDRAIL_DETAIL);
-      } catch (error: any) {
-        console.error("GuardRail detail loading error:", error);
-        setError("가드레일 상세 정보를 불러오는데 실패했습니다");
-      }
-    };
-
-    if (id) {
-      loadGuardRailDetail();
+  // 가드레일 삭제 mutation
+  const [deleteGuardrail, { loading: isDeleting }] = useMutation(
+    DELETE_GUARDRAIL,
+    {
+      onCompleted: () => {
+        console.log("가드레일 삭제 완료");
+        setShowDeleteModal(false);
+        setShowDeleteSuccessModal(true);
+      },
+      onError: (error) => {
+        console.error("가드레일 삭제 실패:", error);
+        setShowDeleteModal(false);
+        setDeleteErrorMessage(error.message);
+        setShowDeleteErrorModal(true);
+      },
+      // 목록 쿼리만 무효화 (현재 상세 페이지는 건드리지 않음)
+      update(cache, { data }) {
+        if (data?.deleteGuardrail) {
+          // fetchGuardrails 목록 쿼리만 무효화
+          cache.evict({ fieldName: "fetchGuardrails" });
+          cache.gc();
+        }
+      },
     }
-  }, [id]);
+  );
 
   // ─── Navigation Handlers ─────────────────────────────
   const handleBack = () => {
@@ -173,22 +166,35 @@ export default function GuardRailDetailContainer() {
   };
 
   const handleEdit = () => {
-    router.push(`/guardrail/edit/${id}`);
+    router.push(`/guardRailList/${guardRailId}/edit`);
   };
 
-  const handleDelete = async () => {
-    if (confirm("정말로 이 가드레일을 삭제하시겠습니까?")) {
-      try {
-        // 실제 API 호출 시에는 이렇게 사용
-        // await API.delete(`/guardrails/${id}`);
+  const handleDeleteClick = () => {
+    setShowDeleteModal(true);
+  };
 
-        alert("가드레일이 삭제되었습니다");
-        router.push("/guardrail");
-      } catch (error) {
-        console.error("Delete error:", error);
-        alert("삭제 중 오류가 발생했습니다");
-      }
+  const handleDeleteConfirm = async () => {
+    try {
+      await deleteGuardrail({
+        variables: { guardrailId: guardRailId as string },
+      });
+    } catch (error) {
+      console.error("Delete error:", error);
     }
+  };
+
+  const handleDeleteCancel = () => {
+    setShowDeleteModal(false);
+  };
+
+  const handleDeleteSuccessModalClose = () => {
+    setShowDeleteSuccessModal(false);
+    router.push("/guardRailList");
+  };
+
+  const handleDeleteErrorModalClose = () => {
+    setShowDeleteErrorModal(false);
+    setDeleteErrorMessage("");
   };
 
   // ─── Format Date ─────────────────────────────
@@ -201,6 +207,32 @@ export default function GuardRailDetailContainer() {
       weekday: "long",
     });
   };
+
+  // ─── Loading State ─────────────────────────────
+  if (loading) {
+    return (
+      <Container gradient={theme.gradient}>
+        <TopAppBar>
+          <AppBarContent>
+            <BackButton onClick={handleBack}>←</BackButton>
+            <AppInfo>
+              <AppTitle>가드레일 상세</AppTitle>
+              <AppSubtitle>로딩 중...</AppSubtitle>
+            </AppInfo>
+            <ActionButtons />
+          </AppBarContent>
+        </TopAppBar>
+
+        <ContentWrapper>
+          <EmptyState>
+            <EmptyIcon>⏳</EmptyIcon>
+            <EmptyTitle>가드레일을 불러오는 중...</EmptyTitle>
+            <EmptyDescription>잠시만 기다려주세요.</EmptyDescription>
+          </EmptyState>
+        </ContentWrapper>
+      </Container>
+    );
+  }
 
   // ─── Error State ─────────────────────────────
   if (error) {
@@ -218,14 +250,20 @@ export default function GuardRailDetailContainer() {
         </TopAppBar>
 
         <ContentWrapper>
-          <ErrorMessage>{error}</ErrorMessage>
+          <EmptyState>
+            <EmptyIcon>❌</EmptyIcon>
+            <EmptyTitle>가드레일을 불러올 수 없습니다</EmptyTitle>
+            <EmptyDescription>{error.message}</EmptyDescription>
+          </EmptyState>
         </ContentWrapper>
       </Container>
     );
   }
 
+  const guardRail = data?.fetchGuardrail;
+
   // ─── Empty State ─────────────────────────────
-  if (!guardRailDetail) {
+  if (!guardRail) {
     return (
       <Container gradient={theme.gradient}>
         <TopAppBar>
@@ -255,19 +293,63 @@ export default function GuardRailDetailContainer() {
   // ─── Main Content ─────────────────────────────
   return (
     <Container gradient={theme.gradient}>
+      {/* 삭제 확인 모달 */}
+      <CheckModal
+        isOpen={showDeleteModal}
+        onClose={handleDeleteCancel}
+        onConfirm={handleDeleteConfirm}
+        title="가드레일 삭제"
+        message={`정말로 이 가드레일을 삭제하시겠습니까?`}
+        confirmText="🗑️ 삭제"
+        cancelText="취소"
+        isLoading={isDeleting}
+        type="danger"
+        theme={theme}
+      />
+
+      {/* 삭제 성공 모달 */}
+      <AlertModal
+        isOpen={showDeleteSuccessModal}
+        onClose={handleDeleteSuccessModalClose}
+        title="삭제 완료"
+        message="가드레일이 성공적으로 삭제되었습니다."
+        buttonText="확인"
+        type="success"
+        theme={theme}
+      />
+
+      {/* 삭제 에러 모달 */}
+      <AlertModal
+        isOpen={showDeleteErrorModal}
+        onClose={handleDeleteErrorModalClose}
+        title="삭제 실패"
+        message={`삭제 중 오류가 발생했습니다.\n${deleteErrorMessage}`}
+        buttonText="확인"
+        type="error"
+        theme={theme}
+      />
+
       <TopAppBar>
         <AppBarContent>
           <BackButton onClick={handleBack}>←</BackButton>
           <AppInfo>
             <AppTitle>가드레일 상세</AppTitle>
-            <AppSubtitle>{guardRailDetail.title}</AppSubtitle>
+            <AppSubtitle>{formatDate(guardRail.createdAt)}</AppSubtitle>
           </AppInfo>
           <ActionButtons>
             <ActionButton theme={theme} onClick={handleEdit}>
               ✏️
             </ActionButton>
-            <ActionButton theme={theme} onClick={handleDelete}>
-              🗑️
+            <ActionButton
+              theme={theme}
+              onClick={handleDeleteClick}
+              disabled={isDeleting}
+              style={{
+                opacity: isDeleting ? 0.6 : 1,
+                cursor: isDeleting ? "not-allowed" : "pointer",
+              }}
+            >
+              {isDeleting ? "⏳" : "🗑️"}
             </ActionButton>
           </ActionButtons>
         </AppBarContent>
@@ -275,42 +357,8 @@ export default function GuardRailDetailContainer() {
 
       <ContentWrapper>
         <DetailContainer>
-          {/* Header Section */}
-          {/* <HeaderSection>
-            <HeaderContent>
-              <HeaderIcon
-                accentBg={theme.accentBg}
-                accentText={theme.accentText}
-              >
-                {guardRailDetail.icon}
-              </HeaderIcon>
-              <HeaderInfo>
-                <HeaderTitle>{guardRailDetail.title}</HeaderTitle>
-                <HeaderSubtitle>{guardRailDetail.subtitle}</HeaderSubtitle>
-                <HeaderMeta>
-                  <MetaBadge variant="date" theme={theme}>
-                    📅 {formatDate(guardRailDetail.date)}
-                  </MetaBadge>
-                  <MetaBadge variant="status" theme={theme}>
-                    ✅{" "}
-                    {guardRailDetail.status === "completed" ? "완료" : "진행중"}
-                  </MetaBadge>
-                </HeaderMeta>
-              </HeaderInfo>
-            </HeaderContent>
-          </HeaderSection> */}
-
           {/* Yesterday Reflection Section */}
           <Section>
-            {/* <SectionHeader>
-              <SectionIcon
-                accentBg={theme.accentBg}
-                accentText={theme.accentText}
-              >
-                ��
-              </SectionIcon>
-              <SectionTitle>어제의 성찰</SectionTitle>
-            </SectionHeader> */}
             <SectionContent>
               <GridContainer>
                 <FullWidthContainer>
@@ -320,7 +368,7 @@ export default function GuardRailDetailContainer() {
                     </CardHeader>
                     <CardContent>
                       <ContentText>
-                        {guardRailDetail.sections.yesterday.mood}
+                        {guardRail.feeling || "기록이 없습니다."}
                       </ContentText>
                     </CardContent>
                   </Card>
@@ -333,7 +381,7 @@ export default function GuardRailDetailContainer() {
                     </CardHeader>
                     <CardContent>
                       <ContentText>
-                        {guardRailDetail.sections.yesterday.important}
+                        {guardRail.mostImpt || "기록이 없습니다."}
                       </ContentText>
                     </CardContent>
                   </Card>
@@ -346,7 +394,7 @@ export default function GuardRailDetailContainer() {
                     </CardHeader>
                     <CardContent>
                       <ContentText>
-                        {guardRailDetail.sections.yesterday.events}
+                        {guardRail.diary || "기록이 없습니다."}
                       </ContentText>
                     </CardContent>
                   </Card>
@@ -359,7 +407,7 @@ export default function GuardRailDetailContainer() {
                     </CardHeader>
                     <CardContent>
                       <ContentText>
-                        {guardRailDetail.sections.yesterday.gratitude}
+                        {guardRail.thanks || "기록이 없습니다."}
                       </ContentText>
                     </CardContent>
                   </Card>
@@ -372,7 +420,7 @@ export default function GuardRailDetailContainer() {
                     </CardHeader>
                     <CardContent>
                       <ContentText>
-                        {guardRailDetail.sections.yesterday.regrets}
+                        {guardRail.oneStep || "기록이 없습니다."}
                       </ContentText>
                     </CardContent>
                   </Card>
@@ -385,7 +433,7 @@ export default function GuardRailDetailContainer() {
                     </CardHeader>
                     <CardContent>
                       <ContentText>
-                        {guardRailDetail.sections.yesterday.direction}
+                        {guardRail.direction || "기록이 없습니다."}
                       </ContentText>
                     </CardContent>
                   </Card>
@@ -398,7 +446,7 @@ export default function GuardRailDetailContainer() {
                     </CardHeader>
                     <CardContent>
                       <ContentText>
-                        {guardRailDetail.sections.yesterday.progress}
+                        {guardRail.oneStep || "기록이 없습니다."}
                       </ContentText>
                     </CardContent>
                   </Card>
@@ -411,7 +459,7 @@ export default function GuardRailDetailContainer() {
                     </CardHeader>
                     <CardContent>
                       <ContentText>
-                        {guardRailDetail.sections.yesterday.unknowns}
+                        {guardRail.ignorance || "기록이 없습니다."}
                       </ContentText>
                     </CardContent>
                   </Card>
@@ -420,38 +468,13 @@ export default function GuardRailDetailContainer() {
             </SectionContent>
           </Section>
 
-          {/* Pavlov Section */}
-          {/* <Section>
-            <SectionHeader>
-              <SectionIcon
-                accentBg={theme.accentBg}
-                accentText={theme.accentText}
-              >
-                ��
-              </SectionIcon>
-              <SectionTitle>파블로프 반응</SectionTitle>
-            </SectionHeader>
-            <SectionContent>
-              {guardRailDetail.sections.pavlov.map(
-                (item: any, index: number) => (
-                  <PavlovCard key={index} theme={theme}>
-                    <PavlovStimulus>자극: {item.stimulus}</PavlovStimulus>
-                    <PavlovResponse>반응: {item.response}</PavlovResponse>
-                  </PavlovCard>
-                )
-              )}
-            </SectionContent>
-          </Section> */}
-
           {/* Action Buttons */}
           <ActionSection>
-            {/* <Button variant="secondary" theme={theme} onClick={handleEdit}>
-              ✏️ 수정하기
-            </Button> */}
             <Button
               variant="primary"
               theme={theme}
               onClick={() => router.push("/guardRailList")}
+              disabled={isDeleting}
             >
               📋 목록으로
             </Button>

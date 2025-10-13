@@ -12,7 +12,7 @@ import {
   LoadingIcon,
   LoadingOverlay,
 } from "../src/commons/libraries/loadingOverlay";
-import AuthGate from "../src/commons/hooks/authGate";
+
 import { ApolloProvider } from "@apollo/client";
 import { apolloClient } from "../src/commons/apis/apollo-client";
 function MyApp({ Component, pageProps }) {
@@ -236,6 +236,7 @@ function MyApp({ Component, pageProps }) {
       <Global styles={pretendardStyles} />
       <RecoilRoot>
         <ApolloProvider client={apolloClient}>
+          <TokenInitializer />
           <LoadingOverlay visible={loadingRoute}>
             <LoadingIcon spin fontSize={48} />
           </LoadingOverlay>

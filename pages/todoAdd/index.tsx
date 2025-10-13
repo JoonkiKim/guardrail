@@ -4,7 +4,7 @@ export default function TodoPageMain() {
   return (
     <>
       <div>
-        <TodoAddPage />
+        <TodoAddPage isEdit={false} />
       </div>
     </>
   );

@@ -508,3 +508,33 @@ export const DateText = styled.span`
   color: #6b7280;
   font-weight: 500;
 `;
+
+// ActionButtons와 ActionButton 추가 (todoDetail과 동일)
+export const ActionButtons = styled.div`
+  display: flex;
+  align-items: center;
+  gap: 12px;
+`;
+
+export const ActionButton = styled.button`
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  border: none;
+  background: rgba(255, 255, 255, 0.8);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.2s;
+
+  &:hover {
+    background: rgba(255, 255, 255, 1);
+    transform: scale(1.05);
+  }
+
+  &:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+  }
+`;

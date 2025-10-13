@@ -4,7 +4,7 @@ export default function WriteGuardRail() {
   return (
     <>
       <div>
-        <GuardRailWriter />
+        <GuardRailWriter isEdit={false} />
 
         {/* <EndPage /> */}
       </div>

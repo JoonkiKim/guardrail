@@ -1,9 +1,10 @@
-import React, { useState, useEffect } from "react";
+import { useState, useEffect } from "react";
 import { useForm } from "react-hook-form";
 import { yupResolver } from "@hookform/resolvers/yup";
 import * as yup from "yup";
 import { useRouter } from "next/router";
-import API from "../../../../commons/apis/api";
+import { useMutation } from "@apollo/client";
+import { CREATE_USER } from "../../../../commons/apis/graphql-queries";
 import {
   Container,
   SignUpCard,
@@ -120,7 +121,7 @@ const signUpSchema = yup.object({
     .string()
     .required("전화번호를 입력해주세요")
     .matches(/^[0-9-+\s()]+$/, "올바른 전화번호 형식이 아닙니다")
-    .min(10, "전바번호는 최소 10자 이상이어야 합니다"),
+    .min(10, "전화번호는 최소 10자 이상이어야 합니다"),
   birthDate: yup
     .string()
     .required("생년월일을 입력해주세요")
@@ -178,13 +179,33 @@ const getPasswordStrengthText = (strength: number): string => {
 // ─── Main Component ─────────────────────────────
 export default function SignUpContainer() {
   const router = useRouter();
-  const [isLoading, setIsLoading] = useState(false);
   const [signUpError, setSignUpError] = useState("");
   const [signUpSuccess, setSignUpSuccess] = useState(false);
-  const [emailVerificationSent, setEmailVerificationSent] = useState(false);
-  const [resendCooldown, setResendCooldown] = useState(0);
   const [colorway, setColorway] = useState<keyof typeof COLORWAYS>("forest");
   const theme = COLORWAYS[colorway];
+
+  // ✅ GraphQL mutation 사용
+  const [createUser, { loading: isLoading }] = useMutation(CREATE_USER, {
+    onCompleted: (data) => {
+      console.log("회원가입 성공:", data);
+      setSignUpSuccess(true);
+    },
+    onError: (error) => {
+      console.error("회원가입 실패:", error);
+
+      // GraphQL 에러 메시지 처리
+      if (
+        error.message.includes("duplicate") ||
+        error.message.includes("already exists")
+      ) {
+        setSignUpError("이미 사용 중인 이메일입니다");
+      } else if (error.message) {
+        setSignUpError(error.message);
+      } else {
+        setSignUpError("회원가입 중 오류가 발생했습니다. 다시 시도해주세요");
+      }
+    },
+  });
 
   const {
     register,
@@ -218,75 +239,43 @@ export default function SignUpContainer() {
     }
   };
 
-  // ─── Resend Cooldown Timer ─────────────────────────────
-  useEffect(() => {
-    if (resendCooldown > 0) {
-      const timer = setTimeout(() => {
-        setResendCooldown(resendCooldown - 1);
-      }, 1000);
-      return () => clearTimeout(timer);
-    }
-  }, [resendCooldown]);
-
   // ─── Form Submission ─────────────────────────────
   const onSubmit = async (data: SignUpFormData) => {
-    setIsLoading(true);
     setSignUpError("");
 
     try {
-      const response = await API.post("/auth/signup", {
-        name: data.name,
-        email: data.email,
-        password: data.password,
-        phone: data.phone,
-        birthDate: data.birthDate,
-        marketingAgreed: data.marketingAgreed,
+      // ✅ birthDate를 올바른 ISO 8601 형식으로 변환
+      const year = parseInt(data.birthDate.substring(0, 4));
+      const month = parseInt(data.birthDate.substring(4, 6)) - 1; // 월은 0부터 시작
+      const day = parseInt(data.birthDate.substring(6, 8));
+
+      // Date 객체로 생성 후 ISO 문자열로 변환
+      const birthDate = new Date(Date.UTC(year, month, day, 0, 0, 0, 0));
+      const birthDateISO = birthDate.toISOString();
+
+      // �� 디버깅용
+      console.log("원본 birthDate:", data.birthDate);
+      console.log("변환된 ISO:", birthDateISO);
+
+      // ✅ GraphQL mutation 실행
+      await createUser({
+        variables: {
+          createUserInput: {
+            name: data.name,
+            email: data.email,
+            password: data.password,
+            phone: data.phone,
+            birthDate: birthDateISO, // ← ISO 형식으로 전송
+            termsAgreed: data.termsAgreed,
+            privacyAgreed: data.privacyAgreed,
+            marketingAgreed: data.marketingAgreed,
+          },
+        },
       });
-
-      if (response.data.success) {
-        setSignUpSuccess(true);
-        setEmailVerificationSent(true);
-      }
-    } catch (error: any) {
-      console.error("Signup error:", error);
-
-      if (error.response?.data?.message) {
-        setSignUpError(error.response.data.message);
-      } else if (error.response?.status === 409) {
-        setSignUpError("이미 사용 중인 이메일입니다");
-      } else {
-        setSignUpError("회원가입 중 오류가 발생했습니다. 다시 시도해주세요");
-      }
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  // ─── Resend Email Verification ─────────────────────────────
-  const handleResendEmail = async () => {
-    if (resendCooldown > 0) return;
-
-    try {
-      await API.post("/auth/email/request", {
-        email: watch("email"),
-      });
-      setResendCooldown(60); // 60초 쿨다운
     } catch (error) {
-      console.error("Resend email error:", error);
+      // onError에서 처리됨
+      console.error("Signup error:", error);
     }
-  };
-
-  // ─── Social Signup Handlers ─────────────────────────────
-  const handleGoogleSignup = () => {
-    console.log("Google signup clicked");
-  };
-
-  const handleKakaoSignup = () => {
-    console.log("Kakao signup clicked");
-  };
-
-  const handleNaverSignup = () => {
-    console.log("Naver signup clicked");
   };
 
   // ─── Navigation Handlers ─────────────────────────────
@@ -334,31 +323,13 @@ export default function SignUpContainer() {
         <SignUpCard>
           <Header>
             <Logo accentBg={theme.accentBg} accentText={theme.accentText}>
-              GR
+              GDR
             </Logo>
             <Title>회원가입 완료!</Title>
-            <Subtitle>이메일 인증을 완료해주세요</Subtitle>
+            <Subtitle>가입이 완료되었습니다</Subtitle>
           </Header>
 
-          <SuccessMessage>
-            ✅ {watch("email")}로 인증 이메일을 발송했습니다
-          </SuccessMessage>
-
-          <EmailVerificationContainer>
-            <EmailVerificationText>
-              이메일의 링크를 클릭하여 계정을 활성화해주세요.
-              <br />
-              이메일이 오지 않았나요?
-            </EmailVerificationText>
-            <ResendButton
-              onClick={handleResendEmail}
-              disabled={resendCooldown > 0}
-            >
-              {resendCooldown > 0
-                ? `${resendCooldown}초 후 재전송`
-                : "인증 이메일 재전송"}
-            </ResendButton>
-          </EmailVerificationContainer>
+          <SuccessMessage>✅ {watch("email")}로 가입되었습니다</SuccessMessage>
 
           <Button onClick={handleLogin} variant="primary" theme={theme}>
             로그인 페이지로 이동
@@ -376,7 +347,6 @@ export default function SignUpContainer() {
             GDR
           </Logo>
           <Title>회원가입</Title>
-          {/* <Subtitle>GuardRail과 함께 안전한 여정을 시작하세요</Subtitle> */}
         </Header>
 
         <Form onSubmit={handleSubmit(onSubmit)}>
@@ -493,11 +463,7 @@ export default function SignUpContainer() {
 
           <CheckboxContainer style={{ marginBottom: "2vh" }}>
             <Checkbox type="checkbox" {...register("termsAgreed")} />
-            <CheckboxText>
-              {/* <CheckboxLink href="#" target="_blank"> */}
-              이용약관
-              {/* </CheckboxLink> */}에 동의합니다 *
-            </CheckboxText>
+            <CheckboxText>이용약관에 동의합니다 *</CheckboxText>
           </CheckboxContainer>
           {errors.termsAgreed && (
             <ErrorMessage>{errors.termsAgreed.message}</ErrorMessage>
@@ -518,11 +484,7 @@ export default function SignUpContainer() {
 
           <CheckboxContainer>
             <Checkbox type="checkbox" {...register("privacyAgreed")} />
-            <CheckboxText>
-              {/* <CheckboxLink href="#" target="_blank"> */}
-              개인정보처리방침
-              {/* </CheckboxLink> */}에 동의합니다 *
-            </CheckboxText>
+            <CheckboxText>개인정보처리방침에 동의합니다 *</CheckboxText>
           </CheckboxContainer>
           {errors.privacyAgreed && (
             <ErrorMessage>{errors.privacyAgreed.message}</ErrorMessage>
@@ -547,25 +509,6 @@ export default function SignUpContainer() {
             {isLoading ? "회원가입 중..." : "회원가입"}
           </Button>
         </Form>
-
-        {/* <Divider>
-          <span>또는</span>
-        </Divider>
-
-        <SocialLoginContainer>
-          <SocialButton type="button" onClick={handleGoogleSignup}>
-            <span>🔍</span>
-            Google로 회원가입
-          </SocialButton>
-          <SocialButton type="button" onClick={handleKakaoSignup}>
-            <span>💬</span>
-            Kakao로 회원가입
-          </SocialButton>
-          <SocialButton type="button" onClick={handleNaverSignup}>
-            <span>N</span>
-            Naver로 회원가입
-          </SocialButton>
-        </SocialLoginContainer> */}
 
         <LinkContainer>
           <span>이미 계정이 있으신가요? </span>

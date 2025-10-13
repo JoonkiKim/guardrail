@@ -243,7 +243,7 @@ export const SocialButton = styled.button`
 export const RememberContainer = styled.div`
   display: flex;
   align-items: center;
-  justify-content: space-between;
+  justify-content: flex-end;
   margin: 8px 0;
 `;
 

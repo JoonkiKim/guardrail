@@ -4,6 +4,7 @@ import { useForm } from "react-hook-form";
 import { yupResolver } from "@hookform/resolvers/yup";
 import * as yup from "yup";
 import GuardRailSuccessModal from "../../modals/guardRailSuccessModal";
+import AlertModal from "../../modals/alertModal";
 import {
   Container,
   TopAppBar,
@@ -40,8 +41,12 @@ import {
   Fab,
   ErrorMessage,
 } from "./guardRailWriter.style";
-import { useMutation } from "@apollo/client";
-import { CREATE_GUARDRAIL } from "../../../../commons/apis/graphql-queries";
+import { useMutation, useQuery } from "@apollo/client";
+import {
+  CREATE_GUARDRAIL,
+  UPDATE_GUARDRAIL,
+  FETCH_GUARDRAIL,
+} from "../../../../commons/apis/graphql-queries";
 
 // Colorway presets (mainPage와 동일)
 const COLORWAYS: Record<
@@ -288,7 +293,33 @@ interface CreateGuardrailVariables {
   createGuardrailInput: CreateGuardrailInput;
 }
 
-export default function GuardRailWriter() {
+// UPDATE용 타입 정의
+interface UpdateGuardrailInput {
+  feeling?: string;
+  mostImpt?: string;
+  diary?: string;
+  thanks?: string;
+  direction?: string;
+  oneStep?: string;
+  ignorance?: string;
+}
+
+interface UpdateGuardrailVariables {
+  guardrailId: string;
+  updateGuardrailInput: UpdateGuardrailInput;
+}
+
+interface UpdateGuardrailData {
+  updateGuardrail: Guardrail;
+}
+
+export default function GuardRailWriter({
+  isEdit = false,
+  guardRailId,
+}: {
+  isEdit: boolean;
+  guardRailId?: string;
+}) {
   const router = useRouter();
   const [colorway, setColorway] = useState<keyof typeof COLORWAYS>("forest");
   const theme = COLORWAYS[colorway];
@@ -298,6 +329,7 @@ export default function GuardRailWriter() {
 
   // 모달 상태 추가
   const [showModal, setShowModal] = useState(false);
+  const [showUpdateSuccessModal, setShowUpdateSuccessModal] = useState(false);
 
   // 랜덤 파블로프 상태
   const [randomPavlov, setRandomPavlov] = useState<{
@@ -311,12 +343,38 @@ export default function GuardRailWriter() {
     setRandomPavlov(PAVLOV_DATA[randomIndex]);
   }, []);
 
+  // 기존 가드레일 데이터 조회 (편집 모드일 때만)
+  const { data: guardrailData, loading: isGuardrailLoading } = useQuery(
+    FETCH_GUARDRAIL,
+    {
+      variables: { guardrailId: guardRailId as string },
+      skip: !isEdit || !guardRailId,
+      onCompleted: (data) => {
+        if (data?.fetchGuardrail) {
+          const guardrail = data.fetchGuardrail;
+          // 폼 기본값 설정
+          reset({
+            yesterdayMood: guardrail.feeling || "",
+            todayImportant: guardrail.mostImpt || "",
+            happenedEvents: guardrail.diary || "",
+            gratitude: guardrail.thanks || "",
+            regrets: guardrail.direction || "",
+            lifeDirection: guardrail.direction || "",
+            yesterdayProgress: guardrail.oneStep || "",
+            unknowns: guardrail.ignorance || "",
+          });
+        }
+      },
+    }
+  );
+
   // react-hook-form 사용 (yup resolver 추가)
   const {
     register,
     handleSubmit,
     formState: { errors },
     watch,
+    reset,
   } = useForm<FormData>({
     resolver: yupResolver(schema), // yup resolver 추가
     defaultValues: {
@@ -342,39 +400,80 @@ export default function GuardRailWriter() {
   const PlusIcon = () => <span>+</span>;
   const SparklesIcon = () => <span>✨</span>;
 
-  // Apollo Client 뮤테이션 훅 사용
-  const [createGuardrailMutation, { loading, error }] = useMutation<
-    CreateGuardrailData,
-    CreateGuardrailVariables
-  >(CREATE_GUARDRAIL);
+  // Apollo Client 뮤테이션 훅 사용 - CREATE
+  const [createGuardrailMutation, { loading: isCreating, error: createError }] =
+    useMutation<CreateGuardrailData, CreateGuardrailVariables>(
+      CREATE_GUARDRAIL
+    );
+
+  // Apollo Client 뮤테이션 훅 사용 - UPDATE
+  const [updateGuardrailMutation, { loading: isUpdating, error: updateError }] =
+    useMutation<UpdateGuardrailData, UpdateGuardrailVariables>(
+      UPDATE_GUARDRAIL,
+      {
+        onCompleted: (data) => {
+          console.log("가드레일 수정 성공:", data?.updateGuardrail);
+          // 수정 성공 시 AlertModal 표시
+          setShowUpdateSuccessModal(true);
+        },
+        onError: (error) => {
+          console.error("가드레일 수정 실패:", error);
+          alert("가드레일 수정 중 오류가 발생했습니다.");
+        },
+      }
+    );
+
+  const loading = isCreating || isUpdating;
+  const error = createError || updateError;
 
   const onSubmit = async (data: FormData) => {
     console.log("=== onSubmit 함수 실행됨 ===");
     console.log("가드레일 저장:", data);
 
     try {
-      const result = await createGuardrailMutation({
-        variables: {
-          createGuardrailInput: {
-            feeling: data.yesterdayMood,
-            mostImpt: data.todayImportant,
-            diary: data.happenedEvents,
-            thanks: data.gratitude,
-            direction: data.lifeDirection,
-            oneStep: data.yesterdayProgress,
-            ignorance: data.unknowns,
+      if (isEdit && guardRailId) {
+        // 편집 모드: UPDATE API 사용
+        await updateGuardrailMutation({
+          variables: {
+            guardrailId: guardRailId,
+            updateGuardrailInput: {
+              feeling: data.yesterdayMood,
+              mostImpt: data.todayImportant,
+              diary: data.happenedEvents,
+              thanks: data.gratitude,
+              direction: data.lifeDirection,
+              oneStep: data.yesterdayProgress,
+              ignorance: data.unknowns,
+            },
           },
-        },
-      });
+        });
+        // onCompleted 콜백에서 모달 표시 처리
+      } else {
+        // 생성 모드: CREATE API 사용
+        const result = await createGuardrailMutation({
+          variables: {
+            createGuardrailInput: {
+              feeling: data.yesterdayMood,
+              mostImpt: data.todayImportant,
+              diary: data.happenedEvents,
+              thanks: data.gratitude,
+              direction: data.lifeDirection,
+              oneStep: data.yesterdayProgress,
+              ignorance: data.unknowns,
+            },
+          },
+        });
 
-      console.log("가드레일 저장 성공:", result.data.createGuardrail);
+        console.log("가드레일 저장 성공:", result.data?.createGuardrail);
 
-      // 성공 시 모달 표시
-      setShowModal(true);
+        // 생성 성공 시 기존 모달 표시
+        setShowModal(true);
+      }
+
       console.log("모달 상태 변경 후:", true);
     } catch (error) {
-      console.error("가드레일 저장 실패:", error);
-      alert("가드레일 저장 중 오류가 발생했습니다.");
+      console.error("가드레일 처리 실패:", error);
+      // 에러는 onError 콜백에서 처리됨
     }
 
     console.log("=== onSubmit 함수 완료 ===");
@@ -399,8 +498,13 @@ export default function GuardRailWriter() {
   };
 
   const handleCloseModal = () => {
-    console.log("모달 닫기 호출"); // 디버깅 추가
+    console.log("모달 닫기 호출");
     setShowModal(false);
+  };
+
+  const handleUpdateSuccessModalClose = () => {
+    setShowUpdateSuccessModal(false);
+    router.push(`/guardRailList/${guardRailId}`);
   };
 
   // 오늘의 파블로프 섹션
@@ -566,7 +670,9 @@ export default function GuardRailWriter() {
         <AppBarContent>
           <BackButton onClick={handleBack}>←</BackButton>
           <AppInfo>
-            <AppTitle>데일리 가드레일 작성</AppTitle>
+            <AppTitle>
+              {isEdit ? "데일리 가드레일 수정" : "데일리 가드레일 작성"}
+            </AppTitle>
             <AppSubtitle>오늘의 생각을 정리해보세요</AppSubtitle>
           </AppInfo>
           <div style={{ width: "40px" }}></div>
@@ -584,149 +690,180 @@ export default function GuardRailWriter() {
           </SectionText>
         </SectionTitle> */}
 
-        {/* 오늘의 파블로프 섹션 추가 */}
-        <TodayPavlovSection />
+        {/* 오늘의 파블로프 섹션 - 편집 모드가 아닐 때만 표시 */}
+        {!isEdit && <TodayPavlovSection />}
 
-        <form
-          onSubmit={handleSubmit(onSubmit)}
-          style={{
-            display: "flex",
-            flexDirection: "column",
-            gap: "24px",
-          }}
-        >
-          <GridContainer>
-            <Card>
-              <CardHeader>
-                <CardTitle size="sm">어제의 기분 한 단어</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <Input {...register("yesterdayMood")} />
-                {errors.yesterdayMood && (
-                  <ErrorMessage>{errors.yesterdayMood.message}</ErrorMessage>
-                )}
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardHeader>
-                <CardTitle size="sm">오늘 가장 중요한 한 가지</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <Input {...register("todayImportant")} />
-                {errors.todayImportant && (
-                  <ErrorMessage>{errors.todayImportant.message}</ErrorMessage>
-                )}
-              </CardContent>
-            </Card>
-          </GridContainer>
-
-          <Card>
-            <CardHeader>
-              <CardTitle size="sm">있었던 일 (일기)</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <Textarea rows={6} {...register("happenedEvents")} />
-              {errors.happenedEvents && (
-                <ErrorMessage>{errors.happenedEvents.message}</ErrorMessage>
-              )}
-            </CardContent>
-          </Card>
-
-          <GridContainer>
-            <Card>
-              <CardHeader>
-                <CardTitle size="sm">감사한 것</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <Textarea rows={6} {...register("gratitude")} />
-                {errors.gratitude && (
-                  <ErrorMessage>{errors.gratitude.message}</ErrorMessage>
-                )}
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardHeader>
-                <CardTitle size="sm">후회하는 일</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <Textarea rows={6} {...register("regrets")} />
-                {errors.regrets && (
-                  <ErrorMessage>{errors.regrets.message}</ErrorMessage>
-                )}
-              </CardContent>
-            </Card>
-          </GridContainer>
-
-          <GridContainer>
-            <Card>
-              <CardHeader>
-                <CardTitle size="sm">
-                  내 삶은 어디를 향하는가? <br />
-                  나의 화두는 원하는 것과 일치하는가?
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <Textarea rows={6} {...register("lifeDirection")} />
-                {errors.lifeDirection && (
-                  <ErrorMessage>{errors.lifeDirection.message}</ErrorMessage>
-                )}
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardHeader>
-                <CardTitle size="sm">
-                  어제 나는 바람직한 방향으로 한 걸음 움직였는가?
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <Textarea rows={6} {...register("yesterdayProgress")} />
-                {errors.yesterdayProgress && (
-                  <ErrorMessage>
-                    {errors.yesterdayProgress.message}
-                  </ErrorMessage>
-                )}
-              </CardContent>
-            </Card>
-          </GridContainer>
-
-          <Card>
-            <CardHeader>
-              <CardTitle size="sm">모르는 것</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div style={{ marginBottom: "12px" }}>
-                <p style={{ fontSize: "12px", color: "#6b7280", margin: 0 }}>
-                  AI가 질문을 제안해 줄 수 있어요
-                </p>
-              </div>
-              <Textarea rows={4} {...register("unknowns")} />
-              {errors.unknowns && (
-                <ErrorMessage>{errors.unknowns.message}</ErrorMessage>
-              )}
-              <div style={{ marginTop: "12px" }}>
-                <Button variant="secondary" theme={theme} type="button">
-                  <SparklesIcon />
-                  제안 받기
-                </Button>
-              </div>
-            </CardContent>
-          </Card>
-
-          <div style={{ display: "flex", justifyContent: "flex-end" }}>
-            <Button theme={theme} type="submit" disabled={loading}>
-              {loading ? "저장 중..." : "오늘의 가드레일 저장"}
-            </Button>
+        {/* 로딩 상태 표시 (편집 모드일 때만) */}
+        {isEdit && isGuardrailLoading ? (
+          <div
+            style={{
+              display: "flex",
+              justifyContent: "center",
+              alignItems: "center",
+              height: "200px",
+              fontSize: "18px",
+              color: theme.accentText,
+            }}
+          >
+            가드레일 데이터를 불러오는 중...
           </div>
-        </form>
+        ) : (
+          <form
+            onSubmit={handleSubmit(onSubmit)}
+            style={{
+              display: "flex",
+              flexDirection: "column",
+              gap: "24px",
+            }}
+          >
+            <GridContainer>
+              <Card>
+                <CardHeader>
+                  <CardTitle size="sm">어제의 기분 한 단어</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <Input {...register("yesterdayMood")} />
+                  {errors.yesterdayMood && (
+                    <ErrorMessage>{errors.yesterdayMood.message}</ErrorMessage>
+                  )}
+                </CardContent>
+              </Card>
+
+              <Card>
+                <CardHeader>
+                  <CardTitle size="sm">오늘 가장 중요한 한 가지</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <Input {...register("todayImportant")} />
+                  {errors.todayImportant && (
+                    <ErrorMessage>{errors.todayImportant.message}</ErrorMessage>
+                  )}
+                </CardContent>
+              </Card>
+            </GridContainer>
+
+            <Card>
+              <CardHeader>
+                <CardTitle size="sm">있었던 일 (일기)</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <Textarea rows={6} {...register("happenedEvents")} />
+                {errors.happenedEvents && (
+                  <ErrorMessage>{errors.happenedEvents.message}</ErrorMessage>
+                )}
+              </CardContent>
+            </Card>
+
+            <GridContainer>
+              <Card>
+                <CardHeader>
+                  <CardTitle size="sm">감사한 것</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <Textarea rows={6} {...register("gratitude")} />
+                  {errors.gratitude && (
+                    <ErrorMessage>{errors.gratitude.message}</ErrorMessage>
+                  )}
+                </CardContent>
+              </Card>
+
+              <Card>
+                <CardHeader>
+                  <CardTitle size="sm">후회하는 일</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <Textarea rows={6} {...register("regrets")} />
+                  {errors.regrets && (
+                    <ErrorMessage>{errors.regrets.message}</ErrorMessage>
+                  )}
+                </CardContent>
+              </Card>
+            </GridContainer>
+
+            <GridContainer>
+              <Card>
+                <CardHeader>
+                  <CardTitle size="sm">
+                    내 삶은 어디를 향하는가? <br />
+                    나의 화두는 원하는 것과 일치하는가?
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <Textarea rows={6} {...register("lifeDirection")} />
+                  {errors.lifeDirection && (
+                    <ErrorMessage>{errors.lifeDirection.message}</ErrorMessage>
+                  )}
+                </CardContent>
+              </Card>
+
+              <Card>
+                <CardHeader>
+                  <CardTitle size="sm">
+                    어제 나는 바람직한 방향으로 한 걸음 움직였는가?
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <Textarea rows={6} {...register("yesterdayProgress")} />
+                  {errors.yesterdayProgress && (
+                    <ErrorMessage>
+                      {errors.yesterdayProgress.message}
+                    </ErrorMessage>
+                  )}
+                </CardContent>
+              </Card>
+            </GridContainer>
+
+            <Card>
+              <CardHeader>
+                <CardTitle size="sm">모르는 것</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div style={{ marginBottom: "12px" }}>
+                  <p style={{ fontSize: "12px", color: "#6b7280", margin: 0 }}>
+                    AI가 질문을 제안해 줄 수 있어요
+                  </p>
+                </div>
+                <Textarea rows={4} {...register("unknowns")} />
+                {errors.unknowns && (
+                  <ErrorMessage>{errors.unknowns.message}</ErrorMessage>
+                )}
+                <div style={{ marginTop: "12px" }}>
+                  <Button variant="secondary" theme={theme} type="button">
+                    <SparklesIcon />
+                    제안 받기
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
+
+            <div style={{ display: "flex", justifyContent: "flex-end" }}>
+              <Button theme={theme} type="submit" disabled={loading}>
+                {loading
+                  ? "저장 중..."
+                  : isEdit
+                  ? "가드레일 수정"
+                  : "오늘의 가드레일 저장"}
+              </Button>
+            </div>
+          </form>
+        )}
       </ContentWrapper>
 
       {/* 모달 렌더링 */}
       <GuardRailSuccessModal
         isOpen={showModal}
         onClose={handleCloseModal}
+        theme={theme}
+      />
+
+      {/* 수정 성공 모달 */}
+      <AlertModal
+        isOpen={showUpdateSuccessModal}
+        onClose={handleUpdateSuccessModalClose}
+        title="수정 완료"
+        message="가드레일이 성공적으로 수정되었습니다."
+        buttonText="확인"
+        type="success"
         theme={theme}
       />
     </Container>

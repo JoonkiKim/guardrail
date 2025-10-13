@@ -3,7 +3,9 @@ import { useForm } from "react-hook-form";
 import { yupResolver } from "@hookform/resolvers/yup";
 import * as yup from "yup";
 import { useRouter } from "next/router";
-import API from "../../../../commons/apis/api";
+import { useMutation } from "@apollo/client";
+import { LOGIN } from "../../../../commons/apis/graphql-queries";
+import { setAccessToken } from "../../../../commons/libraries/token";
 import {
   Container,
   LoginCard,
@@ -98,10 +100,46 @@ type LoginFormData = yup.InferType<typeof loginSchema>;
 // ─── Main Component ─────────────────────────────
 export default function LoginContainer() {
   const router = useRouter();
-  const [isLoading, setIsLoading] = useState(false);
   const [loginError, setLoginError] = useState("");
   const [colorway, setColorway] = useState<keyof typeof COLORWAYS>("forest");
   const theme = COLORWAYS[colorway];
+
+  // ✅ GraphQL mutation 사용
+  const [login, { loading: isLoading }] = useMutation(LOGIN, {
+    onCompleted: (data) => {
+      const accessToken = data?.login;
+      if (accessToken) {
+        // 토큰 저장 (인메모리 + Recoil)
+        setAccessToken(accessToken);
+        console.log("로그인 성공!");
+
+        // 메인 페이지로 이동
+        router.push("/");
+      }
+    },
+    onError: (error) => {
+      console.error("로그인 실패:", error);
+
+      // GraphQL 에러 메시지 처리
+      if (
+        error.message.includes("401") ||
+        error.message.includes("Unauthorized")
+      ) {
+        setLoginError("이메일 또는 비밀번호가 올바르지 않습니다");
+      } else if (
+        error.message.includes("429") ||
+        error.message.includes("Too Many Requests")
+      ) {
+        setLoginError(
+          "너무 많은 로그인 시도가 있었습니다. 잠시 후 다시 시도해주세요"
+        );
+      } else if (error.message) {
+        setLoginError(error.message);
+      } else {
+        setLoginError("로그인 중 오류가 발생했습니다. 다시 시도해주세요");
+      }
+    },
+  });
 
   const {
     register,
@@ -119,56 +157,32 @@ export default function LoginContainer() {
 
   // ─── Form Submission ─────────────────────────────
   const onSubmit = async (data: LoginFormData) => {
-    setIsLoading(true);
     setLoginError("");
 
     try {
-      const response = await API.post("/auth/login", {
-        email: data.email,
-        password: data.password,
+      // ✅ GraphQL mutation 실행
+      await login({
+        variables: {
+          email: data.email,
+          password: data.password,
+        },
       });
-
-      // 로그인 성공 시 토큰 저장
-      if (response.data.accessToken) {
-        // 토큰 저장 로직 (프로젝트의 토큰 관리 방식에 맞게 수정)
-        localStorage.setItem("accessToken", response.data.accessToken);
-
-        // 메인 페이지로 리다이렉트
-        router.push("/");
-      }
-    } catch (error: any) {
+    } catch (error) {
+      // onError에서 처리됨
       console.error("Login error:", error);
-
-      // 에러 메시지 설정
-      if (error.response?.data?.message) {
-        setLoginError(error.response.data.message);
-      } else if (error.response?.status === 401) {
-        setLoginError("이메일 또는 비밀번호가 올바르지 않습니다");
-      } else if (error.response?.status === 429) {
-        setLoginError(
-          "너무 많은 로그인 시도가 있었습니다. 잠시 후 다시 시도해주세요"
-        );
-      } else {
-        setLoginError("로그인 중 오류가 발생했습니다. 다시 시도해주세요");
-      }
-    } finally {
-      setIsLoading(false);
     }
   };
 
   // ─── Social Login Handlers ─────────────────────────────
   const handleGoogleLogin = () => {
-    // Google 로그인 로직 구현
     console.log("Google login clicked");
   };
 
   const handleKakaoLogin = () => {
-    // Kakao 로그인 로직 구현
     console.log("Kakao login clicked");
   };
 
   const handleNaverLogin = () => {
-    // Naver 로그인 로직 구현
     console.log("Naver login clicked");
   };
 
@@ -189,7 +203,6 @@ export default function LoginContainer() {
             GDR
           </Logo>
           <Title>로그인</Title>
-          {/* <Subtitle>안전한 여정을 시작하세요</Subtitle> */}
         </Header>
 
         <Form onSubmit={handleSubmit(onSubmit)}>
@@ -222,10 +235,6 @@ export default function LoginContainer() {
           </FormGroup>
 
           <RememberContainer>
-            <CheckboxContainer>
-              <Checkbox type="checkbox" {...register("rememberMe")} />
-              <span>로그인 상태 유지</span>
-            </CheckboxContainer>
             <ForgotPassword href="#" onClick={handleFindPassword}>
               비밀번호 찾기
             </ForgotPassword>
@@ -245,25 +254,6 @@ export default function LoginContainer() {
             {isLoading ? "로그인 중..." : "로그인"}
           </Button>
         </Form>
-
-        {/* <Divider>
-          <span>또는</span>
-        </Divider>
-
-        <SocialLoginContainer>
-          <SocialButton type="button" onClick={handleGoogleLogin}>
-            <span>🔍</span>
-            Google로 로그인
-          </SocialButton>
-          <SocialButton type="button" onClick={handleKakaoLogin}>
-            <span>💬</span>
-            Kakao로 로그인
-          </SocialButton>
-          <SocialButton type="button" onClick={handleNaverLogin}>
-            <span>N</span>
-            Naver로 로그인
-          </SocialButton>
-        </SocialLoginContainer> */}
 
         <LinkContainer>
           <span>계정이 없으신가요? </span>

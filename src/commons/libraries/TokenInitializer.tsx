@@ -1,64 +1,144 @@
-import { useEffect } from "react";
+import { useEffect, useRef } from "react";
 import { useRouter } from "next/router";
-import API from "../apis/api";
 import { useSetRecoilState } from "recoil";
 import { accessTokenState, authCheckedState } from "../stores";
+import { useMutation } from "@apollo/client";
 import {
   registerAccessTokenSetter,
   setAccessToken,
   clearAccessToken,
 } from "../libraries/token";
+import { RESTORE_ACCESS_TOKEN } from "../apis/graphql-queries";
+
+// ✅ 인증이 필요 없는 페이지 목록
+const PUBLIC_PATHS = ["/login", "/signUp", "/find-password"];
 
 export default function TokenInitializer() {
   const setToken = useSetRecoilState(accessTokenState);
-
-  // setChecked는 인증 상태(액세스 토큰 유무/리프레시) 확인이 끝났다” 라는 플래그를 앱 전역에 알려주는 역할을 합니다.
   const setChecked = useSetRecoilState(authCheckedState);
   const router = useRouter();
-  // console.log("분기 합침 테스트");
+
+  // ✅ 초기화 완료 여부를 추적
+  const isInitialized = useRef(false);
+
+  // GraphQL mutation hook
+  const [restoreAccessToken] = useMutation(RESTORE_ACCESS_TOKEN, {
+    context: {
+      headers: {
+        authorization: "",
+      },
+    },
+  });
 
   // ① RecoilRoot 안에서만 registerAccessTokenSetter를 호출
   useEffect(() => {
     registerAccessTokenSetter(setToken);
     return () => {
-      // 언마운트 시 클리어(선택)
       clearAccessToken();
     };
   }, [setToken]);
 
-  // ② "새로고침"일 때만 refresh 요청
-  // ② 새로고침일 때만 refresh
+  // ② 앱 시작 시 한 번만 토큰 갱신 (페이지 이동 시 재실행 안 됨)
   useEffect(() => {
     if (typeof window === "undefined") return;
 
-    const navEntry = performance.getEntriesByType("navigation")[0] as
-      | PerformanceNavigationTiming
-      | undefined;
-    const isReload =
-      navEntry?.type === "reload" ||
-      (performance as any)?.navigation?.type === 1;
+    // ✅ 이미 초기화되었으면 실행 안 함
+    if (isInitialized.current) {
+      return;
+    }
 
-    // if (!isReload) {
-    //   // 새로고침이 아니면 그냥 체크 완료 표시만
-    //   setChecked(true);
-    //   return;
-    // }
+    // ✅ 공개 페이지면 토큰 갱신 스킵
+    const isPublicPath = PUBLIC_PATHS.some((path) =>
+      router.pathname.startsWith(path)
+    );
 
-    API.post("/auth/refresh")
+    if (isPublicPath) {
+      console.log("🔓 공개 페이지: 토큰 갱신 스킵");
+      setChecked(true);
+      isInitialized.current = true; // ✅ 초기화 완료 표시
+      return;
+    }
+
+    console.log("🔄 TokenInitializer: 토큰 갱신 시도...");
+
+    // ✅ 초기화 시작 표시
+    isInitialized.current = true;
+
+    restoreAccessToken()
       .then((res) => {
-        setAccessToken(res.data.accessToken);
-        console.log("리프레시 성공");
+        console.log("✅ 리프레시 응답:", res);
+
+        const newToken = res.data?.restoreAccessToken;
+        console.log("newToken", newToken);
+
+        if (newToken) {
+          // ✅ 토큰 갱신 성공
+          setAccessToken(newToken);
+          console.log("✅ 리프레시 성공 (GraphQL)");
+          console.log("📝 새 액세스 토큰:", newToken.substring(0, 20) + "...");
+        } else {
+          // ❌ 토큰이 없음 → 로그인 필요
+          console.warn(
+            "⚠️ 리프레시 응답에 토큰이 없습니다 → 로그인 페이지 이동"
+          );
+          clearAccessToken();
+
+          if (!PUBLIC_PATHS.some((path) => router.pathname.startsWith(path))) {
+            router.push("/login");
+          }
+        }
       })
-      .catch(() => {
-        console.log("리프레시 실패");
-        router.push("/login");
-        // 여기서 바로 router.push("/login")는 UX에 따라 선택
-        // 실패했다고 해서 매번 login으로 강제 이동할 필요가 없으면 주석 유지
+      .catch((error) => {
+        console.error("❌ 리프레시 실패:", error);
+
+        // 인증 에러 확인
+        const isAuthError =
+          error.graphQLErrors?.some(
+            (e: any) =>
+              e.extensions?.code === "UNAUTHENTICATED" ||
+              e.extensions?.code === "FORBIDDEN" ||
+              e.extensions?.statusCode === 401 ||
+              e.extensions?.statusCode === 403
+          ) ||
+          error.message.includes("Unauthorized") ||
+          error.message.includes("Invalid token") ||
+          error.message.includes("Token expired") ||
+          error.message.includes("No refresh token");
+
+        const isNetworkError = error.networkError !== null;
+
+        const isServerError = error.graphQLErrors?.some(
+          (e: any) =>
+            e.extensions?.statusCode >= 500 ||
+            e.extensions?.code === "INTERNAL_SERVER_ERROR"
+        );
+
+        if (isAuthError) {
+          console.log("🔐 인증 실패 → 로그인 페이지 이동");
+          clearAccessToken();
+
+          if (!PUBLIC_PATHS.some((path) => router.pathname.startsWith(path))) {
+            const returnUrl = encodeURIComponent(router.asPath);
+            router.push(`/login?returnUrl=${returnUrl}`);
+          }
+        } else if (isNetworkError) {
+          console.warn("🌐 네트워크 오류 → 토큰 유지, 오프라인 모드");
+        } else if (isServerError) {
+          console.warn("🔧 서버 오류 → 토큰 유지, 나중에 재시도");
+        } else {
+          console.error("❓ 알 수 없는 오류 → 로그인 페이지 이동");
+          clearAccessToken();
+
+          if (!PUBLIC_PATHS.some((path) => router.pathname.startsWith(path))) {
+            router.push("/login");
+          }
+        }
       })
       .finally(() => {
-        setChecked(true); // 무조건 초기화 완료
+        console.log("✔️ TokenInitializer: 인증 체크 완료");
+        setChecked(true);
       });
-  }, [setChecked]);
+  }, []); // ✅ 빈 배열 - 마운트 시 한 번만 실행!
 
   return null;
 }
