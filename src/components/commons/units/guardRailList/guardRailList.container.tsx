@@ -258,11 +258,7 @@ export default function GuardRailListPage() {
           <EmptyState>
             <EmptyIcon>📝</EmptyIcon>
             <EmptyTitle>아직 가드레일이 없어요</EmptyTitle>
-            <EmptyDescription>
-              첫 번째 가드레일을 작성해보세요
-              <br />
-              매일의 생각을 정리하는 습관을 만들어보세요
-            </EmptyDescription>
+            <EmptyDescription>첫 번째 가드레일을 작성해보세요</EmptyDescription>
           </EmptyState>
         )}
       </ContentWrapper>

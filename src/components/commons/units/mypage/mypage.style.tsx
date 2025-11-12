@@ -130,7 +130,7 @@ export const ProfileHeader = styled.div`
   display: flex;
   align-items: center;
   gap: 16px;
-  margin-bottom: 20px;
+  // margin-bottom: 20px;
 `;
 
 export const ProfileAvatar = styled.div<{ bgColor: string; textColor: string }>`
@@ -146,15 +146,14 @@ export const ProfileAvatar = styled.div<{ bgColor: string; textColor: string }>`
   font-weight: 600;
 `;
 
-export const ProfileInfo = styled.div`
-  flex: 1;
-`;
+export const ProfileInfo = styled.div``;
 
 export const ProfileName = styled.h2`
   margin: 0 0 4px 0;
   font-size: 20px;
   font-weight: 600;
   color: #1f2937;
+  margin-bottom: 2vh;
 `;
 
 export const ProfileEmail = styled.p`

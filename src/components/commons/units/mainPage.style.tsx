@@ -1,10 +1,17 @@
 import styled from "@emotion/styled";
 
+// ✅ 공통 너비 상수 정의
+const MAX_CONTENT_WIDTH = "480px";
+
 // ─── 전체 컨테이너 ─────────────────────────────
 export const Container = styled.div<{ gradient: string }>`
-  min-height: 100vh;
-  background: linear-gradient(135deg, ${(props) => props.gradient});
+  min-height: 90vh;
+
   font-family: "Pretendard", sans-serif;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  // justify-content: center;
 `;
 
 // ─── Top App Bar ─────────────────────────────
@@ -15,15 +22,20 @@ export const TopAppBar = styled.div`
   position: sticky;
   top: 0;
   z-index: 100;
+  height: 15vh;
+  width: 85%; // ✅ 전체 너비
+  display: flex;
+  justify-content: center; // ✅ 중앙 정렬
 `;
 
 export const AppBarContent = styled.div`
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 16px 20px;
-  max-width: 480px; // 1200px에서 변경
-  margin: 0 auto;
+  margin-top: 1vh;
+  padding: 0 20px;
+  max-width: ${MAX_CONTENT_WIDTH}; // ✅ 상수 사용
+  width: 100%; // ✅ 부모 너비 활용
 `;
 
 export const AppIcon = styled.div<{ accentBg: string; accentText: string }>`
@@ -41,11 +53,11 @@ export const AppInfo = styled.div`
   text-align: center;
 `;
 
-export const AppTitle = styled.h1`
+export const AppTitle = styled.h1<{ accentText: string }>`
   margin: 0;
-  font-size: 18px;
-  font-weight: 600;
-  color: #1f2937;
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: ${(props) => props.accentText};
 `;
 
 export const AppSubtitle = styled.p`
@@ -81,9 +93,9 @@ export const DateDisplay = styled.div`
 
 // ─── Content ─────────────────────────────
 export const ContentWrapper = styled.div`
-  max-width: 480px; // 1280px에서 변경
-  margin: 0 auto;
-  padding: 0 16px 40px 16px;
+  max-width: ${MAX_CONTENT_WIDTH}; // ✅ 상수 사용
+  width: 85%; // ✅ 부모 너비 활용
+
   padding-top: 24px;
 `;
 
@@ -170,13 +182,13 @@ export const Sidebar = styled.aside`
 export const MainContent = styled.main`
   display: flex;
   flex-direction: column;
-  gap: 24px;
+  // gap: 24px;
 `;
 
 // ─── Cards ─────────────────────────────
 export const Card = styled.div`
   border-radius: 16px;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+  // box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
   background: rgba(255, 255, 255, 0.7);
   overflow: hidden;
 `;
@@ -195,6 +207,9 @@ export const CardTitle = styled.h3<{ size?: "sm" | "base" }>`
 
 export const CardContent = styled.div`
   padding: 8px 16px 16px 16px;
+  display: flex;
+  flex-direction: column;
+  flex: 1;
 `;
 
 // ─── Navigation ─────────────────────────────
@@ -457,4 +472,250 @@ export const Fab = styled.button<{ theme: any }>`
   @media (max-width: 639px) {
     display: grid;
   }
+`;
+
+// ─── Entry Screen Components ─────────────────────────────
+export const EntryScreenWrapper = styled.div`
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  // background-color: red;
+
+  gap: 20px;
+`;
+
+export const HeaderSection = styled.div`
+  text-align: center;
+  margin-bottom: 8px;
+`;
+
+export const DateTitle = styled.div<{ accentText: string }>`
+  font-size: 1rem;
+  font-weight: 600;
+  color: ${(props) => props.accentText};
+  margin-top: 2vh;
+  margin-bottom: 4px;
+`;
+
+export const SubtitleText = styled.div`
+  font-size: 14px;
+  color: #6b7280;
+`;
+
+export const GuardrailCard = styled(Card)<{ ring: string }>`
+  width: 100%;
+  background: #eafff5;
+  height: 60vh;
+  position: relative;
+  overflow: hidden;
+  border-radius: 0;
+  display: flex;
+  flex-direction: column;
+`;
+
+export const CardDecoIcon = styled.div`
+  position: absolute;
+  top: 16px;
+  right: 16px;
+  font-size: 28px;
+  opacity: 0.2;
+`;
+
+export const GuardrailTitle = styled(CardTitle)<{ accentText: string }>`
+  font-size: 18px;
+  font-weight: 600;
+  margin-left: 1vh;
+  color: ${(props) => props.accentText};
+`;
+
+export const GuardrailList = styled.div`
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+`;
+
+export const GuardrailItem = styled.div<{
+  isFirst: boolean;
+  accentBg: string;
+  ring: string;
+}>`
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 12px;
+  border-radius: 5px; // ✅ radius 제거 (이미 주석 처리되어 있음)
+  background: #ffffff;
+  // border: 1px solid ${(props) => props.ring};
+  transition: all 0.2s ease;
+  &:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 16px rgba(22, 101, 52, 0.12);
+  }
+`;
+
+export const GuardrailItemContent = styled.div`
+  flex: 1;
+`;
+
+export const GuardrailItemHeader = styled.div`
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 4px;
+`;
+
+export const GuardrailItemTitle = styled.div`
+  font-size: 14px;
+  font-weight: 600;
+  color: #005a2f;
+`;
+
+export const MoodBadge = styled.div<{ ring: string; accentText: string }>`
+  padding: 4px 6px;
+  border-radius: 3px; // ✅ radius 제거
+  background: #005a2f;
+  font-size: 10px;
+  color: #ffffff;
+  font-weight: 500;
+`;
+
+export const GuardrailSummary = styled.div`
+  font-size: 12px;
+  color: #6b7280;
+  line-height: 1.4;
+  margin-bottom: 4px;
+`;
+
+export const GuardrailDate = styled.div<{ accentText: string }>`
+  font-size: 11px;
+  color: ${(props) => props.accentText};
+  font-weight: 500;
+`;
+
+export const ViewAllButtonWrapper = styled.div`
+  margin-top: auto;
+  margin-bottom: 0;
+`;
+
+export const ViewAllButton = styled(Button)`
+  width: 100%;
+  font-size: 14px;
+  padding: 12px;
+  border-radius: 0; // ✅ radius 제거
+`;
+
+export const MainActionWrapper = styled.div`
+  display: flex;
+  justify-content: center;
+  margin-top: 8px;
+`;
+
+export const MainActionButton = styled(Button)<{
+  button: string;
+  buttonHover: string;
+}>`
+  padding: 16px 24px;
+  font-size: 16px;
+  font-weight: 500;
+  color: #ffffff;
+  border-radius: 10px;
+  box-shadow: 0 4px 12px ${(props) => props.button}30;
+  background: linear-gradient(
+    135deg,
+    ${(props) => props.button},
+    ${(props) => props.buttonHover}
+  );
+  border: none;
+
+  &:hover {
+    color: #000000;
+  }
+`;
+
+// ✅ Empty State 컴포넌트 추가
+export const EmptyState = styled.div`
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 60px 20px;
+  text-align: center;
+  color: #6b7280;
+`;
+
+export const EmptyIcon = styled.div`
+  font-size: 48px;
+  margin-bottom: 16px;
+  opacity: 0.7;
+`;
+
+export const EmptyTitle = styled.h3`
+  font-size: 18px;
+  font-weight: 600;
+  margin: 0 0 8px 0;
+  color: #374151;
+`;
+
+export const EmptyDescription = styled.p`
+  font-size: 14px;
+  margin: 0;
+  color: #6b7280;
+  line-height: 1.6;
+`;
+
+// ✅ Loading State 컴포넌트 추가
+export const LoadingState = styled.div`
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 60px 20px;
+  text-align: center;
+`;
+
+export const LoadingSpinner = styled.div`
+  width: 40px;
+  height: 40px;
+  border: 3px solid #e5e7eb;
+  border-top-color: #16a34a;
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+  margin-bottom: 16px;
+
+  @keyframes spin {
+    to {
+      transform: rotate(360deg);
+    }
+  }
+`;
+
+// ✅ Error State 컴포넌트 추가
+export const ErrorState = styled.div`
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 60px 20px;
+  text-align: center;
+  color: #6b7280;
+`;
+
+export const ErrorIcon = styled.div`
+  font-size: 48px;
+  margin-bottom: 16px;
+  opacity: 0.7;
+`;
+
+export const ErrorTitle = styled.h3`
+  font-size: 18px;
+  font-weight: 600;
+  margin: 0 0 8px 0;
+  color: #dc2626;
+`;
+
+export const ErrorDescription = styled.p`
+  font-size: 14px;
+  margin: 0;
+  color: #6b7280;
+  line-height: 1.6;
 `;

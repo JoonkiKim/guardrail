@@ -39,3 +39,28 @@ self.addEventListener("fetch", (event) => {
     fetch(event.request).catch(() => caches.match(OFFLINE_URL))
   );
 });
+
+self.addEventListener("push", (event) => {
+  const data = event.data?.json?.() ?? {};
+  const title = data.title || "GuardRail";
+  const options = {
+    body: data.body || "",
+    icon: "/images/GDR.png",
+    badge: "/images/GDR.png",
+    data: data.url ? { url: data.url } : {},
+  };
+  event.waitUntil(self.registration.showNotification(title, options));
+});
+
+self.addEventListener("notificationclick", (event) => {
+  event.notification.close();
+  const url = event.notification.data?.url || "/";
+  event.waitUntil(
+    self.clients
+      .matchAll({ type: "window", includeUncontrolled: true })
+      .then((windowClients) => {
+        const existing = windowClients.find((client) => client.url === url);
+        return existing ? existing.focus() : self.clients.openWindow(url);
+      })
+  );
+});

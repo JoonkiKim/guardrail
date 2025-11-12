@@ -1,6 +1,7 @@
 import styled from "@emotion/styled";
 
 export const Container = styled.div<{ gradient: string }>`
+  //  position: relative
   min-height: 93vh;
   background: linear-gradient(135deg, ${(props) => props.gradient});
   font-family: "Pretendard", sans-serif;
@@ -308,7 +309,7 @@ export const SeparatorLine = styled.div`
 `;
 
 export const FloatingActionButton = styled.button<{ theme: any }>`
-  position: fixed;
+  position: absolute;
   bottom: 13vh;
   /* 컨테이너의 85% 지점에 배치 (컨테이너 너비 기준) */
   right: 10%;

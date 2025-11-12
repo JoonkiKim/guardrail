@@ -340,3 +340,45 @@ export const CREATE_USER = gql`
     }
   }
 `;
+
+// 로그인한 사용자 정보 조회 쿼리
+export const FETCH_LOGIN_USER = gql`
+  query FetchLoginUser {
+    fetchLoginUser {
+      id
+      name
+      email
+      phone
+      birthDate
+      marketingAgreed
+      termsAgreed
+      privacyAgreed
+      reminderHour
+      createdAt
+      updatedAt
+    }
+  }
+`;
+
+
+// 알림 시간 업데이트 뮤테이션
+export const UPDATE_REMINDER_HOUR = gql`
+  mutation UpdateReminderHour($updateReminderHourInput: UpdateReminderHourInput!) {
+    updateReminderHour(updateReminderHourInput: $updateReminderHourInput) {
+      id
+      reminderHour
+      updatedAt
+    }
+  }
+`;
+
+// 사용자 정보 업데이트 뮤테이션 (marketingAgreed 업데이트용)
+export const UPDATE_USER = gql`
+  mutation UpdateUser($userId: String!, $updateUserInput: UpdateUserInput!) {
+    updateUser(userId: $userId, updateUserInput: $updateUserInput) {
+      id
+      marketingAgreed
+      updatedAt
+    }
+  }
+`;

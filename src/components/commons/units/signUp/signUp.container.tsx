@@ -43,6 +43,7 @@ import {
   SectionTitle,
   SectionIcon,
 } from "./signUp.style";
+import { usePushSubscription } from "../../../../commons/hooks/usePushSubscription";
 
 // ─── Colorway System (matching mainPage) ─────────────────────────────
 const COLORWAYS: Record<
@@ -179,6 +180,7 @@ const getPasswordStrengthText = (strength: number): string => {
 // ─── Main Component ─────────────────────────────
 export default function SignUpContainer() {
   const router = useRouter();
+  const { subscribeToPush } = usePushSubscription();
   const [signUpError, setSignUpError] = useState("");
   const [signUpSuccess, setSignUpSuccess] = useState(false);
   const [colorway, setColorway] = useState<keyof typeof COLORWAYS>("forest");
@@ -272,6 +274,13 @@ export default function SignUpContainer() {
           },
         },
       });
+      if (data.marketingAgreed) {
+        try {
+          await subscribeToPush();
+        } catch (pushError) {
+          console.error("푸시 구독 실패:", pushError);
+        }
+      }
     } catch (error) {
       // onError에서 처리됨
       console.error("Signup error:", error);
@@ -492,7 +501,9 @@ export default function SignUpContainer() {
 
           <CheckboxContainer>
             <Checkbox type="checkbox" {...register("marketingAgreed")} />
-            <CheckboxText>마케팅 정보 수신에 동의합니다 (선택)</CheckboxText>
+            <CheckboxText>
+              마케팅 정보 및 푸시 알림 수신에 동의합니다 (선택)
+            </CheckboxText>
           </CheckboxContainer>
 
           {signUpError && (

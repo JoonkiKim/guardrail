@@ -1,34 +1,5 @@
 import styled from "@emotion/styled";
 
-export const FloatingActionButton = styled.button<{ theme: any }>`
-  position: fixed;
-  bottom: 13vh;
-  /* 컨테이너의 85% 지점에 배치 (컨테이너 너비 기준) */
-  right: 10%;
-  width: 56px;
-  height: 56px;
-  border-radius: 50%;
-  background: ${(props) => props.theme.button || "#16a34a"};
-  border: none;
-  color: white;
-  font-size: 24px;
-  font-weight: 600;
-  cursor: pointer;
-  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.2);
-  transition: all 0.2s;
-  z-index: 1000;
-
-  &:hover {
-    transform: scale(1.1);
-    box-shadow: 0 6px 20px rgba(0, 0, 0, 0.3);
-  }
-
-  /* 모바일에서는 오른쪽 여백 유지 */
-  @media (max-width: 768px) {
-    right: 24px;
-  }
-`;
-
 export const Container = styled.div<{ gradient: string }>`
   min-height: 100vh;
   background: linear-gradient(135deg, ${(props) => props.gradient});
@@ -219,4 +190,32 @@ export const EmptyDescription = styled.p`
   font-size: 14px;
   line-height: 1.5;
   color: #6b7280;
+`;
+export const FloatingActionButton = styled.button<{ theme: any }>`
+  position: absolute;
+  bottom: 20vh;
+  /* 컨테이너의 85% 지점에 배치 (컨테이너 너비 기준) */
+  right: 10%;
+  width: 56px;
+  height: 56px;
+  border-radius: 50%;
+  background: ${(props) => props.theme.button || "#16a34a"};
+  border: none;
+  color: white;
+  font-size: 24px;
+  font-weight: 600;
+  cursor: pointer;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.2);
+  transition: all 0.2s;
+  z-index: 1000;
+
+  &:hover {
+    transform: scale(1.1);
+    box-shadow: 0 6px 20px rgba(0, 0, 0, 0.3);
+  }
+
+  /* 모바일에서는 오른쪽 여백 유지 */
+  @media (max-width: 768px) {
+    right: 24px;
+  }
 `;

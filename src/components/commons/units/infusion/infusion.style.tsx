@@ -301,6 +301,8 @@ export const Badge = styled.button<{
 // Tabs Components
 export const Tabs = styled.div`
   width: 100%;
+  // background: red;
+  margin-bottom: 2vh;
 `;
 
 export const TabsList = styled.div`

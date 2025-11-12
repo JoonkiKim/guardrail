@@ -1,52 +1,48 @@
-import React, { useMemo, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
+import { useRouter } from "next/router";
+import { NetworkStatus, useQuery } from "@apollo/client";
+import { FETCH_GUARDRAILS } from "../../../commons/apis/graphql-queries";
 import {
   Container,
   TopAppBar,
   AppBarContent,
-  AppIcon,
   AppInfo,
   AppTitle,
-  AppSubtitle,
-  ColorwaySelect,
-  DateDisplay,
   ContentWrapper,
-  StreakRow,
-  StreakCard,
-  StreakLabel,
-  StreakValue,
-  StreakNumber,
-  StreakUnit,
-  ProgressBar,
-  ProgressFill,
   MainLayout,
-  Sidebar,
   MainContent,
-  Card,
   CardHeader,
-  CardTitle,
   CardContent,
-  NavItem,
-  NavIcon,
-  NavLabel,
-  NavArrow,
-  SectionTitle,
-  SectionIcon,
-  SectionText,
-  SectionHeading,
-  SectionSubtitle,
-  Input,
-  Textarea,
-  Button,
-  Badge,
-  Separator,
-  Switch,
-  BottomNav,
-  BottomNavContent,
-  BottomNavItem,
-  BottomNavIcon,
-  BottomNavLabel,
-  Fab,
+  // ✅ 새로 추가된 styled components
+  EntryScreenWrapper,
+  HeaderSection,
+  DateTitle,
+  GuardrailCard,
+  GuardrailTitle,
+  GuardrailList,
+  GuardrailItem,
+  GuardrailItemContent,
+  GuardrailItemHeader,
+  GuardrailItemTitle,
+  MoodBadge,
+  GuardrailSummary,
+  GuardrailDate,
+  ViewAllButtonWrapper,
+  ViewAllButton,
+  MainActionWrapper,
+  MainActionButton,
+  // ✅ 새로 추가된 컴포넌트들
+  EmptyState,
+  EmptyIcon,
+  EmptyTitle,
+  EmptyDescription,
+  LoadingState,
+  LoadingSpinner,
+  ErrorState,
+  ErrorIcon,
+  ErrorTitle,
+  ErrorDescription,
 } from "./mainPage.style";
 
 // Colorway presets
@@ -99,443 +95,224 @@ const COLORWAYS: Record<
   },
 };
 
-// 샘플 데이터
-const SAMPLE_PAVLOV = {
-  stimulus: "감정적 동요",
-  response: "10초 세며 숨 고르기",
-};
-
-const SAMPLE_TODOS = [
-  {
-    id: 1,
-    title: "프로젝트 문서 작성",
-    time: "09:00",
-    description: "신규 프로젝트 기획서 초안 작성",
-    completed: false,
-  },
-  {
-    id: 2,
-    title: "팀 미팅 참석",
-    time: "14:00",
-    description: "주간 스프린트 리뷰 미팅",
-    completed: false,
-  },
-  {
-    id: 3,
-    title: "코드 리뷰",
-    time: "16:00",
-    description: "동료의 PR 리뷰 및 피드백",
-    completed: true,
-  },
-];
-
-const SAMPLE_GUARDRAILS = [
-  {
-    id: 1,
-    date: "2024-01-15",
-    mood: "만족스러움",
-    title: "오늘의 성찰",
-    summary: "프로젝트 완성으로 팀워크의 중요성을 깨달았다",
-  },
-  {
-    id: 2,
-    date: "2024-01-14",
-    mood: "감사함",
-    title: "일상의 소중함",
-    summary: "소소한 순간들에 감사하는 마음을 갖게 되었다",
-  },
-];
-
 export default function MainPage() {
+  const router = useRouter();
   const [nav, setNav] = useState<
     "entry" | "todo" | "pavlov" | "daily" | "infusion" | "my"
   >("entry");
   const [colorway, setColorway] = useState<keyof typeof COLORWAYS>("forest");
   const theme = COLORWAYS[colorway];
-  const today = useMemo(
-    () =>
-      new Date().toLocaleDateString(undefined, {
-        year: "numeric",
-        month: "long",
-        day: "numeric",
-        weekday: "short",
-      }),
-    []
+
+  // ✅ Apollo Client 쿼리 훅 사용
+  const { data, loading, error, refetch, networkStatus } = useQuery(
+    FETCH_GUARDRAILS,
+    {
+      notifyOnNetworkStatusChange: true,
+    }
   );
 
-  // 아이콘 컴포넌트들
-  const LeafIcon = () => <span>🌿</span>;
-  const ListTodoIcon = () => <span>📝</span>;
-  const ActivityIcon = () => <span>⚡</span>;
-  const NotebookPenIcon = () => <span>✏️</span>;
-  const AnchorIcon = () => <span>⚓</span>;
-  const UserIcon = () => <span>👤</span>;
-  const ChevronRightIcon = () => <span>›</span>;
-  const CalendarIconComponent = () => <span>📅</span>;
-  const PlusIcon = () => <span>+</span>;
-  const BookOpenCheckIcon = () => <span>📖</span>;
-  const SparklesIcon = () => <span>✨</span>;
-  const WindIcon = () => <span>💨</span>;
-  const BrainIcon = () => <span>🧠</span>;
+  useEffect(() => {
+    const handleRouteChange = (url: string) => {
+      if (url === "/" || url.startsWith("/main")) {
+        refetch();
+      }
+    };
+
+    const handleVisibilityChange = () => {
+      if (!document.hidden) {
+        refetch();
+      }
+    };
+
+    router.events.on("routeChangeComplete", handleRouteChange);
+    document.addEventListener("visibilitychange", handleVisibilityChange);
+
+    refetch();
+
+    return () => {
+      router.events.off("routeChangeComplete", handleRouteChange);
+      document.removeEventListener("visibilitychange", handleVisibilityChange);
+    };
+  }, [refetch, router]);
+
+  const today = useMemo(() => {
+    const now = new Date();
+    const year = now.getFullYear();
+    const month = String(now.getMonth() + 1).padStart(2, "0");
+    const day = String(now.getDate()).padStart(2, "0");
+    const weekday = ["일", "월", "화", "수", "목", "금", "토"][now.getDay()];
+
+    return `${year}.${month}.${day} ${weekday}`;
+  }, []);
+
+  // ✅ 날짜 포맷팅 함수
+  const formatDate = (dateString: string) => {
+    const date = new Date(dateString);
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, "0");
+    const day = String(date.getDate()).padStart(2, "0");
+
+    return `${year}.${month}.${day}`;
+  };
+
+  // ✅ 요약 텍스트 생성 함수
+  const generateSummary = (guardrail: any) => {
+    const diary = guardrail.diary?.slice(0, 50) || "";
+    const thanks = guardrail.thanks?.slice(0, 30) || "";
+    const oneStep = guardrail.oneStep?.slice(0, 40) || "";
+
+    return diary || thanks || oneStep || "기록이 없습니다.";
+  };
+
+  const guardrails = data?.fetchGuardrails ?? [];
+  // ✅ 최근 3개의 가드레일 가져오기
+  // 렌더 직전에 바로 정렬·슬라이스
+  const recentGuardrails = [...guardrails]
+    .sort(
+      (a, b) =>
+        new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+    )
+    .slice(0, 3);
+
+  const handleGuardrailClick = (guardrailId: string) => {
+    router.push(`/guardRailList/${guardrailId}`);
+  };
+
+  const isRefetching = networkStatus === NetworkStatus.refetch;
+  const isLoading = loading || isRefetching;
 
   const EntryScreen = () => (
-    <div style={{ display: "flex", flexDirection: "column", gap: "20px" }}>
+    <EntryScreenWrapper id="entry-screen-wrapper">
       {/* 헤더 섹션 */}
-      <div style={{ textAlign: "center", marginBottom: "8px" }}>
-        <div
-          style={{
-            fontSize: "24px",
-            fontWeight: "700",
-            color: theme.accentText,
-            marginBottom: "4px",
-          }}
-        >
-          {today}
-        </div>
-        {/* <div style={{ fontSize: "14px", color: "#6b7280" }}>
-          오늘도 의미있는 하루 되세요
-        </div> */}
-      </div>
-
-      {/* 그리드 레이아웃 */}
-      <div
-        style={{
-          display: "grid",
-          gridTemplateColumns: "1fr 1fr",
-          gap: "16px",
-          marginBottom: "8px",
-        }}
-      >
-        {/* 파블로프 카드 */}
-        <Card
-          style={{
-            background: `linear-gradient(135deg, ${theme.accentBg}, ${theme.emphCard})`,
-            border: `2px solid ${theme.ring}`,
-            position: "relative",
-            overflow: "hidden",
-          }}
-        >
-          <div
-            style={{
-              position: "absolute",
-              top: "12px",
-              right: "12px",
-              fontSize: "24px",
-              opacity: 0.3,
-            }}
-          >
-            {/* 🧠 */}
-          </div>
-          <CardHeader style={{ paddingBottom: "8px" }}>
-            <CardTitle
-              style={{
-                fontSize: "16px",
-                fontWeight: "600",
-                color: theme.accentText,
-              }}
-            >
-              오늘의 파블로프
-            </CardTitle>
-          </CardHeader>
-          <CardContent style={{ paddingTop: "0" }}>
-            <div style={{ marginBottom: "12px" }}>
-              <div
-                style={{
-                  fontSize: "12px",
-                  color: theme.accentText,
-                  fontWeight: "600",
-                  marginBottom: "4px",
-                  textTransform: "uppercase",
-                  letterSpacing: "0.5px",
-                }}
-              >
-                {SAMPLE_PAVLOV.stimulus}
-              </div>
-              <div
-                style={{
-                  fontSize: "14px",
-                  color: "#374151",
-                  fontWeight: "500",
-                  lineHeight: "1.4",
-                }}
-              >
-                {SAMPLE_PAVLOV.response}
-              </div>
-            </div>
-            <Link href="/pavlov" passHref>
-              <Button
-                theme={theme}
-                style={{
-                  width: "100%",
-                  fontSize: "12px",
-                  padding: "8px 12px",
-                  borderRadius: "6px",
-                }}
-              >
-                더 보기 →
-              </Button>
-            </Link>
-          </CardContent>
-        </Card>
-
-        {/* 투두 카드 */}
-        <Card
-          style={{
-            background: "rgba(255, 255, 255, 0.9)",
-            border: `2px solid ${theme.ring}`,
-            position: "relative",
-            overflow: "hidden",
-          }}
-        >
-          <div
-            style={{
-              position: "absolute",
-              top: "12px",
-              right: "12px",
-              fontSize: "24px",
-              opacity: 0.3,
-            }}
-          >
-            {/* 📝 */}
-          </div>
-          <CardHeader style={{ paddingBottom: "8px" }}>
-            <CardTitle
-              style={{
-                fontSize: "16px",
-                fontWeight: "600",
-                color: theme.accentText,
-              }}
-            >
-              오늘의 할 일
-            </CardTitle>
-          </CardHeader>
-          <CardContent style={{ paddingTop: "0" }}>
-            <div style={{ marginBottom: "12px" }}>
-              {SAMPLE_TODOS.slice(0, 3).map((todo) => (
-                <div
-                  key={todo.id}
-                  style={{
-                    fontSize: "12px",
-                    color: "#374151",
-                    marginBottom: "6px",
-                  }}
-                >
-                  {todo.title}
-                </div>
-              ))}
-              {SAMPLE_TODOS.length > 3 && (
-                <div
-                  style={{
-                    fontSize: "12px",
-                    color: "#6b7280",
-                    fontStyle: "italic",
-                    marginTop: "4px",
-                  }}
-                >
-                  ...
-                </div>
-              )}
-            </div>
-            <Link href="/todoList" passHref>
-              <Button
-                theme={theme}
-                style={{
-                  width: "100%",
-                  fontSize: "12px",
-                  padding: "8px 12px",
-                  borderRadius: "6px",
-                }}
-              >
-                전체 보기 →
-              </Button>
-            </Link>
-          </CardContent>
-        </Card>
-      </div>
 
       {/* 가드레일 섹션 */}
-      <Card
-        style={{
-          background: "rgba(255, 255, 255, 0.9)",
-          border: `2px solid ${theme.ring}`,
-          position: "relative",
-          overflow: "hidden",
-        }}
-      >
-        <div
-          style={{
-            position: "absolute",
-            top: "16px",
-            right: "16px",
-            fontSize: "28px",
-            opacity: 0.2,
-          }}
-        >
-          {/* 🛡️ */}
-        </div>
-        <CardHeader>
-          <CardTitle
-            style={{
-              fontSize: "18px",
-              fontWeight: "600",
-              color: theme.accentText,
-            }}
-          >
+      <GuardrailCard id="guardrail-card" ring={theme.ring}>
+        <CardHeader id="guardrail-card-header">
+          <GuardrailTitle id="guardrail-title" accentText={theme.accentText}>
             최근 가드레일
-          </CardTitle>
+          </GuardrailTitle>
         </CardHeader>
-        <CardContent>
-          <div
-            style={{ display: "flex", flexDirection: "column", gap: "12px" }}
-          >
-            {SAMPLE_GUARDRAILS.map((guardrail, index) => (
-              <div
-                key={guardrail.id}
-                style={{
-                  display: "flex",
-                  alignItems: "flex-start",
-                  gap: "12px",
-                  padding: "12px",
-                  borderRadius: "10px",
-                  background:
-                    index === 0 ? theme.accentBg : "rgba(255, 255, 255, 0.5)",
-                  border: `1px solid ${theme.ring}`,
-                  transition: "all 0.2s ease",
-                }}
-              >
-                {/* <div
-                  style={{
-                    width: "32px",
-                    height: "32px",
-                    borderRadius: "8px",
-                    background: theme.button,
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "center",
-                    color: "white",
-                    fontSize: "12px",
-                    fontWeight: "600",
-                    flexShrink: 0,
-                  }}
+        <CardContent id="guardrail-card-content">
+          {isLoading ? (
+            <LoadingState>
+              <LoadingSpinner />
+              <EmptyTitle>가드레일을 불러오는 중...</EmptyTitle>
+              <EmptyDescription>잠시만 기다려주세요</EmptyDescription>
+            </LoadingState>
+          ) : error ? (
+            <ErrorState>
+              <ErrorIcon>⚠️</ErrorIcon>
+              <ErrorTitle>가드레일을 불러올 수 없습니다</ErrorTitle>
+              <ErrorDescription>
+                {error.message ||
+                  "일시적인 오류가 발생했습니다. 다시 시도해주세요."}
+              </ErrorDescription>
+            </ErrorState>
+          ) : recentGuardrails.length === 0 ? (
+            <EmptyState>
+              <EmptyIcon>📝</EmptyIcon>
+              <EmptyTitle>아직 가드레일이 없어요</EmptyTitle>
+              <EmptyDescription>
+                첫 번째 가드레일을 작성해보세요
+              </EmptyDescription>
+            </EmptyState>
+          ) : (
+            <GuardrailList id="guardrail-list">
+              {recentGuardrails.map((guardrail, index) => (
+                <GuardrailItem
+                  onClick={() => handleGuardrailClick(guardrail.id)}
+                  id={`guardrail-item-${guardrail.id}`}
+                  key={guardrail.id}
+                  isFirst={index === 0}
+                  accentBg={theme.accentBg}
+                  ring={theme.ring}
                 >
-                  {index + 1}
-                </div> */}
-                <div style={{ flex: 1 }}>
-                  <div
-                    style={{
-                      display: "flex",
-                      alignItems: "center",
-                      gap: "8px",
-                      marginBottom: "4px",
-                    }}
+                  <GuardrailItemContent
+                    id={`guardrail-content-${guardrail.id}`}
                   >
-                    <div
-                      style={{
-                        fontSize: "14px",
-                        fontWeight: "600",
-                        color: "#374151",
-                      }}
+                    <GuardrailItemHeader
+                      id={`guardrail-header-${guardrail.id}`}
                     >
-                      {guardrail.title}
-                    </div>
-                    <div
-                      style={{
-                        padding: "2px 6px",
-                        borderRadius: "4px",
-                        background: theme.ring,
-                        fontSize: "10px",
-                        color: theme.accentText,
-                        fontWeight: "500",
-                      }}
+                      <GuardrailItemTitle
+                        id={`guardrail-title-${guardrail.id}`}
+                      >
+                        {guardrail.mostImpt || "오늘의 기록"}
+                      </GuardrailItemTitle>
+                      {guardrail.feeling && (
+                        <MoodBadge
+                          id={`mood-badge-${guardrail.id}`}
+                          ring={theme.ring}
+                          accentText={theme.accentText}
+                        >
+                          {guardrail.feeling}
+                        </MoodBadge>
+                      )}
+                    </GuardrailItemHeader>
+                    <GuardrailSummary id={`guardrail-summary-${guardrail.id}`}>
+                      {generateSummary(guardrail)}
+                    </GuardrailSummary>
+                    <GuardrailDate
+                      id={`guardrail-date-${guardrail.id}`}
+                      accentText={theme.accentText}
                     >
-                      {guardrail.mood}
-                    </div>
-                  </div>
-                  <div
-                    style={{
-                      fontSize: "12px",
-                      color: "#6b7280",
-                      lineHeight: "1.4",
-                      marginBottom: "4px",
-                    }}
-                  >
-                    {guardrail.summary}
-                  </div>
-                  <div
-                    style={{
-                      fontSize: "11px",
-                      color: theme.accentText,
-                      fontWeight: "500",
-                    }}
-                  >
-                    {guardrail.date}
-                  </div>
-                </div>
-              </div>
-            ))}
-          </div>
-          <div style={{ marginTop: "16px" }}>
+                      {formatDate(guardrail.createdAt)}
+                    </GuardrailDate>
+                  </GuardrailItemContent>
+                </GuardrailItem>
+              ))}
+            </GuardrailList>
+          )}
+
+          <ViewAllButtonWrapper id="view-all-button-wrapper">
             <Link href="/guardRailList" passHref>
-              <Button
-                theme={theme}
-                style={{
-                  width: "100%",
-                  fontSize: "14px",
-                  padding: "12px",
-                  borderRadius: "8px",
-                }}
-              >
+              <ViewAllButton id="view-all-button" theme={theme}>
                 가드레일 전체 보기 →
-              </Button>
+              </ViewAllButton>
             </Link>
-          </div>
+          </ViewAllButtonWrapper>
         </CardContent>
-      </Card>
+      </GuardrailCard>
 
       {/* 메인 액션 버튼 */}
-      <div
-        style={{
-          display: "flex",
-          justifyContent: "center",
-          marginTop: "8px",
-        }}
-      >
+      <MainActionWrapper id="main-action-wrapper">
         <Link href="/writeGuardRail" passHref>
-          <Button
+          <MainActionButton
+            id="main-action-button"
             theme={theme}
-            style={{
-              padding: "16px 24px",
-              fontSize: "16px",
-              fontWeight: "600",
-              borderRadius: "12px",
-              boxShadow: `0 4px 12px ${theme.button}30`,
-              background: `linear-gradient(135deg, ${theme.button}, ${theme.buttonHover})`,
-              border: "none",
-            }}
+            button={theme.button}
+            buttonHover={theme.buttonHover}
           >
             ✏️ 오늘의 가드레일 쓰기
-          </Button>
+          </MainActionButton>
         </Link>
-      </div>
-    </div>
+      </MainActionWrapper>
+    </EntryScreenWrapper>
   );
 
   return (
-    <Container gradient={theme.gradient}>
+    <Container id="main-page-container" gradient={theme.gradient}>
       {/* Top App Bar */}
-      <TopAppBar>
-        <AppBarContent>
-          <AppInfo>
-            <AppTitle>Guardrail Diary</AppTitle>
-            <AppSubtitle>길에서 벗어나지 않도록 붙드는 매일의 기록</AppSubtitle>
+      <TopAppBar id="main-top-app-bar">
+        <AppBarContent id="main-app-bar-content">
+          <AppInfo id="main-app-info">
+            <AppTitle id="main-app-title" accentText={theme.accentText}>
+              Guardrail Diary
+            </AppTitle>
+            <HeaderSection id="main-header-section">
+              <DateTitle id="main-date-title" accentText={theme.accentText}>
+                {today}
+              </DateTitle>
+            </HeaderSection>
           </AppInfo>
         </AppBarContent>
       </TopAppBar>
 
       {/* Content */}
-      <ContentWrapper>
-        <MainLayout>
-          <MainContent>{nav === "entry" && <EntryScreen />}</MainContent>
+      <ContentWrapper id="main-content-wrapper">
+        <MainLayout id="main-layout">
+          <MainContent id="main-content">
+            {nav === "entry" && <EntryScreen />}
+          </MainContent>
         </MainLayout>
       </ContentWrapper>
     </Container>
