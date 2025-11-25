@@ -354,6 +354,11 @@ export const FETCH_LOGIN_USER = gql`
       termsAgreed
       privacyAgreed
       reminderHour
+      pushNotificationEnabled
+      pushSubscriptions {
+        id
+        endpoint
+      }
       createdAt
       updatedAt
     }
@@ -378,6 +383,35 @@ export const UPDATE_USER = gql`
     updateUser(userId: $userId, updateUserInput: $updateUserInput) {
       id
       marketingAgreed
+      updatedAt
+    }
+  }
+`;
+
+// 푸시 구독 생성 뮤테이션
+export const CREATE_PUSH_SUBSCRIPTION = gql`
+  mutation CreatePushSubscription($input: CreatePushSubscriptionInput!) {
+    createPushSubscription(input: $input) {
+      id
+      endpoint
+      createdAt
+    }
+  }
+`;
+
+// 푸시 구독 삭제 뮤테이션
+export const REMOVE_PUSH_SUBSCRIPTION = gql`
+  mutation RemovePushSubscription($endpoint: String!) {
+    removePushSubscription(endpoint: $endpoint)
+  }
+`;
+
+// 푸시 알림 설정 업데이트 뮤테이션
+export const UPDATE_PUSH_NOTIFICATION = gql`
+  mutation UpdatePushNotification($updatePushNotificationInput: UpdatePushNotificationInput!) {
+    updatePushNotification(updatePushNotificationInput: $updatePushNotificationInput) {
+      id
+      pushNotificationEnabled
       updatedAt
     }
   }

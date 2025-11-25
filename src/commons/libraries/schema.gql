@@ -103,12 +103,21 @@ enum TodoPriority {
   HIGH
 }
 
+type PushSubscription {
+  id: String!
+  user: User!
+  endpoint: String!
+  expirationTime: String
+  keys: String!
+  createdAt: DateTime!
+}
+
 type User {
   id: String!
   name: String!
   email: String!
   phone: String!
-  birthDate: DateTime!
+  birthDate: DateTime
   marketingAgreed: Boolean!
   termsAgreed: Boolean!
   privacyAgreed: Boolean!
@@ -116,6 +125,9 @@ type User {
   todos: [Todo!]
   infusions: [Infusion!]
   pavlovs: [Pavlov!]
+  pushSubscriptions: [PushSubscription!]
+  reminderHour: Int
+  pushNotificationEnabled: Boolean!
   createdAt: DateTime!
   updatedAt: DateTime!
 }
@@ -138,8 +150,15 @@ type Mutation {
   restoreAccessToken: String!
   logout: String!
   createUser(createUserInput: CreateUserInput!): User!
-  updateUser(userId: String!, updateProductInput: UpdateUserInput!): User!
+  updateUser(userId: String!, updateUserInput: UpdateUserInput!): User!
   deleteUser(userId: String!): String!
+  updateReminderHour(updateReminderHourInput: UpdateReminderHourInput!): User!
+  updatePushNotification(
+    updatePushNotificationInput: UpdatePushNotificationInput!
+  ): User!
+  sendTestPushNotification(userId: String): String!
+  createPushSubscription(input: CreatePushSubscriptionInput!): PushSubscription!
+  removePushSubscription(endpoint: String!): Boolean!
   createGuardrail(createGuardrailInput: CreateGuardrailInput!): Guardrail!
   updateGuardrail(
     guardrailId: String!
@@ -183,6 +202,25 @@ input UpdateUserInput {
   termsAgreed: Boolean
   privacyAgreed: Boolean
   marketingAgreed: Boolean = false
+}
+
+input UpdateReminderHourInput {
+  reminderHour: Int!
+}
+
+input UpdatePushNotificationInput {
+  enabled: Boolean!
+}
+
+input CreatePushSubscriptionInput {
+  endpoint: String!
+  expirationTime: String
+  keys: PushSubscriptionKeysInput!
+}
+
+input PushSubscriptionKeysInput {
+  p256dh: String!
+  auth: String!
 }
 
 input CreateGuardrailInput {

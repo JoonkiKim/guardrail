@@ -21,12 +21,41 @@ function MyApp({ Component, pageProps }) {
   // console.log("분기 합침 테스트");
 
   /* --------- Service Worker 등록 --------- */
+  // useEffect(() => {
+  //   if ("serviceWorker" in navigator) {
+  //     const onLoad = () =>
+  //       navigator.serviceWorker.register("/sw.js").catch(console.error); // 등록 실패 시 콘솔 확인
+  //     window.addEventListener("load", onLoad);
+  //     return () => window.removeEventListener("load", onLoad);
+  //   }
+  // }, []);
+
   useEffect(() => {
-    if ("serviceWorker" in navigator) {
-      const onLoad = () =>
-        navigator.serviceWorker.register("/sw.js").catch(console.error); // 등록 실패 시 콘솔 확인
-      window.addEventListener("load", onLoad);
-      return () => window.removeEventListener("load", onLoad);
+    if ("serviceWorker" in navigator && typeof window !== "undefined") {
+      // 환경 변수가 없으면 서비스 워커를 등록하지 않음
+      const frontendOrigin = process.env.NEXT_PUBLIC_FRONTEND_URL;
+
+      if (!frontendOrigin) {
+        console.warn(
+          "NEXT_PUBLIC_FRONTEND_URL이 설정되지 않아 서비스 워커를 등록하지 않습니다."
+        );
+        return;
+      }
+
+      // 현재 origin이 프론트엔드 origin과 다르면 등록하지 않음
+      if (window.location.origin !== frontendOrigin) {
+        console.warn("서비스 워커는 프론트엔드 origin에서만 등록됩니다.");
+        return;
+      }
+
+      navigator.serviceWorker
+        .register("/sw.js")
+        .then((registration) => {
+          console.log("Service Worker 등록 성공:", registration.scope);
+        })
+        .catch((error) => {
+          console.error("Service Worker 등록 실패:", error);
+        });
     }
   }, []);
 

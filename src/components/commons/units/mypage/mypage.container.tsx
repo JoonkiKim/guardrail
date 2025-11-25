@@ -1,7 +1,11 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/router";
-import { useQuery } from "@apollo/client";
-import { FETCH_LOGIN_USER } from "../../../../commons/apis/graphql-queries";
+import { useMutation, useQuery } from "@apollo/client";
+import {
+  FETCH_LOGIN_USER,
+  UPDATE_PUSH_NOTIFICATION,
+  UPDATE_REMINDER_HOUR,
+} from "../../../../commons/apis/graphql-queries";
 import {
   Container,
   TopAppBar,
@@ -61,8 +65,9 @@ export default function MypageContainer({
   const router = useRouter();
   const [notifications, setNotifications] = useState(true);
   const [selectedTheme, setSelectedTheme] = useState(theme);
-  const [selectedTime, setSelectedTime] = useState("21:00");
-
+  const [selectedHour, setSelectedHour] = useState(21); // ✅ 시간만 저장 (0-23)
+  const [isSavingTime, setIsSavingTime] = useState(false);
+  const saveTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   // fetchLoginUser 쿼리 실행
   const { data, loading, error } = useQuery(FETCH_LOGIN_USER, {
     onCompleted: (data) => {
@@ -164,28 +169,120 @@ export default function MypageContainer({
   //   },
   // ];
   const { subscribeToPush, unsubscribeFromPush } = usePushSubscription();
-
-  const marketingAgreed = data?.fetchLoginUser?.marketingAgreed ?? false;
+  const [updatePushNotification] = useMutation(UPDATE_PUSH_NOTIFICATION);
+  const pushNotificationEnabled =
+    data?.fetchLoginUser?.pushNotificationEnabled ?? false;
 
   useEffect(() => {
-    setNotifications(marketingAgreed);
-  }, [marketingAgreed]);
+    setNotifications(pushNotificationEnabled);
+  }, [pushNotificationEnabled]);
+
   const handleNotificationToggle = async (checked: boolean) => {
+    // 낙관적 업데이트
     setNotifications(checked);
 
     try {
       if (checked) {
+        // 1. 브라우저에서 구독 + 백엔드에 구독 정보 저장
         await subscribeToPush();
-        // TODO: backend mutation으로 marketingAgreed=true 업데이트
+
+        // 2. pushNotificationEnabled를 true로 업데이트
+        await updatePushNotification({
+          variables: {
+            updatePushNotificationInput: {
+              enabled: true,
+            },
+          },
+        });
       } else {
+        // 1. 브라우저에서 구독 해제 + 백엔드에서 구독 정보 삭제
         await unsubscribeFromPush();
-        // TODO: backend mutation으로 marketingAgreed=false 업데이트
+
+        // 2. pushNotificationEnabled를 false로 업데이트
+        await updatePushNotification({
+          variables: {
+            updatePushNotificationInput: {
+              enabled: false,
+            },
+          },
+        });
       }
     } catch (error) {
       console.error("푸시 구독 설정 변경 실패:", error);
+      // 에러 발생 시 이전 상태로 롤백
       setNotifications(!checked);
+      alert("푸시 알림 설정 변경에 실패했습니다. 다시 시도해주세요.");
     }
   };
+
+  const [updateReminderHour] = useMutation(UPDATE_REMINDER_HOUR, {
+    onCompleted: () => {
+      console.log("✅ 알림 시간 업데이트 완료");
+      setIsSavingTime(false);
+    },
+    onError: (error) => {
+      console.error("❌ 알림 시간 업데이트 실패:", error);
+      setIsSavingTime(false);
+      alert("알림 시간 저장에 실패했습니다. 다시 시도해주세요.");
+    },
+  });
+
+  // 사용자 정보에서 reminderHour를 가져와서 시간으로 설정
+  useEffect(() => {
+    if (
+      data?.fetchLoginUser?.reminderHour !== null &&
+      data?.fetchLoginUser?.reminderHour !== undefined
+    ) {
+      // reminderHour는 Int (0-23) 형식
+      const hour = data.fetchLoginUser.reminderHour;
+      setSelectedHour(hour);
+    }
+  }, [data?.fetchLoginUser?.reminderHour]);
+
+  // 시간 변경 핸들러 (디바운싱 적용)
+  const handleHourChange = (hour: number) => {
+    setSelectedHour(hour);
+
+    // 이전 타이머 취소
+    if (saveTimeoutRef.current) {
+      clearTimeout(saveTimeoutRef.current);
+    }
+
+    // 1초 후에 저장 (디바운싱)
+    saveTimeoutRef.current = setTimeout(async () => {
+      if (isNaN(hour) || hour < 0 || hour > 23) {
+        return;
+      }
+
+      setIsSavingTime(true);
+
+      try {
+        await updateReminderHour({
+          variables: {
+            updateReminderHourInput: {
+              reminderHour: hour,
+            },
+          },
+        });
+      } catch (error) {
+        console.error("알림 시간 저장 실패:", error);
+        // 에러 발생 시 이전 시간으로 롤백
+        if (data?.fetchLoginUser?.reminderHour !== null) {
+          const previousHour = data.fetchLoginUser.reminderHour;
+          setSelectedHour(previousHour);
+        }
+      }
+    }, 1000);
+  };
+
+  // 컴포넌트 언마운트 시 타이머 정리
+  useEffect(() => {
+    return () => {
+      if (saveTimeoutRef.current) {
+        clearTimeout(saveTimeoutRef.current);
+      }
+    };
+  }, []);
 
   return (
     <Container gradient={currentTheme.gradient}>
@@ -287,20 +384,46 @@ export default function MypageContainer({
               <SettingInfo>
                 <SettingLabel>기록 시간</SettingLabel>
                 <SettingDescription>
-                  매일 기록할 시간을 설정하세요
+                  매일 가드레일 기록 알림을 받을 시간을 설정하세요
                 </SettingDescription>
               </SettingInfo>
-              <input
-                type="time"
-                value={selectedTime}
-                onChange={(e) => setSelectedTime(e.target.value)}
-                style={{
-                  padding: "8px 12px",
-                  border: "1px solid #d1d5db",
-                  borderRadius: "8px",
-                  fontSize: "14px",
-                }}
-              />
+              <div style={{ position: "relative" }}>
+                <Select
+                  value={selectedHour}
+                  onChange={(e) => handleHourChange(Number(e.target.value))}
+                  disabled={isSavingTime}
+                  style={{
+                    padding: "8px 12px",
+                    border: "1px solid #d1d5db",
+                    borderRadius: "8px",
+                    fontSize: "14px",
+                    minWidth: "120px",
+                    opacity: isSavingTime ? 0.6 : 1,
+                    cursor: isSavingTime ? "not-allowed" : "pointer",
+                  }}
+                >
+                  {Array.from({ length: 24 }, (_, i) => (
+                    <option key={i} value={i}>
+                      {i}시
+                    </option>
+                  ))}
+                </Select>
+                {isSavingTime && (
+                  <span
+                    style={{
+                      position: "absolute",
+                      right: "12px",
+                      top: "50%",
+                      transform: "translateY(-50%)",
+                      fontSize: "12px",
+                      color: "#6b7280",
+                      pointerEvents: "none",
+                    }}
+                  >
+                    저장 중...
+                  </span>
+                )}
+              </div>
             </SettingItem>
 
             {/* <SettingItem>

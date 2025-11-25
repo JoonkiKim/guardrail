@@ -1,20 +1,17 @@
 /* public/sw.js */
 
-/* 캐시 이름은 버전 태그까지 포함해서 구분 */
 const CACHE_NAME = "offline-v1";
 const OFFLINE_URL = "/offline.html";
 
-/* ---------- 1. install 단계: offline.html만 캐시 ---------- */
 self.addEventListener("install", (event) => {
   event.waitUntil(
     caches
       .open(CACHE_NAME)
       .then((cache) => cache.add(OFFLINE_URL))
-      .then(() => self.skipWaiting()) // 설치되면 즉시 활성화
+      .then(() => self.skipWaiting())
   );
 });
 
-/* ---------- 2. activate 단계: 낡은 캐시 정리 ---------- */
 self.addEventListener("activate", (event) => {
   event.waitUntil(
     caches
@@ -26,22 +23,45 @@ self.addEventListener("activate", (event) => {
             .map((key) => caches.delete(key))
         )
       )
-      .then(() => self.clients.claim()) // 열린 탭에 새 SW 적용
+      .then(() => self.clients.claim())
   );
 });
 
-/* ---------- 3. fetch 가로채기 ---------- */
 self.addEventListener("fetch", (event) => {
-  /* navigation 요청(=HTML 문서)만 처리 ― JS/CSS 등은 신경 끄기 */
   if (event.request.mode !== "navigate") return;
-
   event.respondWith(
     fetch(event.request).catch(() => caches.match(OFFLINE_URL))
   );
 });
 
+// 수정된 push 이벤트 리스너
 self.addEventListener("push", (event) => {
-  const data = event.data?.json?.() ?? {};
+  console.log("🔔 Push 이벤트 수신:", event);
+  
+  let data = {};
+
+  if (event.data) {
+    try {
+      data = event.data.json(); // 올바른 메서드 호출
+      console.log("✅ JSON 파싱 성공:", data);
+    } catch (e) {
+      console.error("❌ JSON 파싱 실패:", e);
+      // JSON이 아니면 텍스트로 처리
+      const text = event.data.text();
+      console.log("📝 텍스트 데이터:", text);
+      data = {
+        title: "GuardRail",
+        body: text || "새로운 알림이 있습니다.",
+      };
+    }
+  } else {
+    console.warn("⚠️ event.data가 없습니다!");
+    data = {
+      title: "GuardRail",
+      body: "새로운 알림이 있습니다.",
+    };
+  }
+
   const title = data.title || "GuardRail";
   const options = {
     body: data.body || "",
@@ -49,7 +69,18 @@ self.addEventListener("push", (event) => {
     badge: "/images/GDR.png",
     data: data.url ? { url: data.url } : {},
   };
-  event.waitUntil(self.registration.showNotification(title, options));
+
+  console.log("📤 알림 표시 시도:", { title, options });
+
+  event.waitUntil(
+    self.registration.showNotification(title, options)
+      .then(() => {
+        console.log("✅ 알림 표시 성공");
+      })
+      .catch((error) => {
+        console.error("❌ 알림 표시 실패:", error);
+      })
+  );
 });
 
 self.addEventListener("notificationclick", (event) => {

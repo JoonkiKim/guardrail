@@ -1,4 +1,9 @@
 import { useCallback } from "react";
+import { useMutation } from "@apollo/client";
+import {
+  CREATE_PUSH_SUBSCRIPTION,
+  REMOVE_PUSH_SUBSCRIPTION,
+} from "../apis/graphql-queries";
 
 const PUBLIC_VAPID_KEY = process.env.NEXT_PUBLIC_WEB_PUSH_PUBLIC_KEY || "";
 
@@ -14,19 +19,22 @@ function urlBase64ToUint8Array(base64String: string) {
 }
 
 export function usePushSubscription() {
+  const [createPushSubscription] = useMutation(CREATE_PUSH_SUBSCRIPTION);
+  const [removePushSubscription] = useMutation(REMOVE_PUSH_SUBSCRIPTION);
+
   const subscribeToPush = useCallback(async () => {
     if (typeof window === "undefined") return;
     if (!("serviceWorker" in navigator)) {
       console.warn("Service Worker is not supported");
-      return;
+      throw new Error("Service Worker is not supported");
     }
     if (!("Notification" in window)) {
       console.warn("Notifications are not supported");
-      return;
+      throw new Error("Notifications are not supported");
     }
     if (!PUBLIC_VAPID_KEY) {
       console.warn("Missing NEXT_PUBLIC_WEB_PUSH_PUBLIC_KEY");
-      return;
+      throw new Error("Missing VAPID key");
     }
 
     const registration = await navigator.serviceWorker.ready;
@@ -35,36 +43,54 @@ export function usePushSubscription() {
       alert(
         "알림 권한이 차단되어 있습니다. 브라우저 설정에서 허용으로 변경해주세요."
       );
-      return;
+      throw new Error("Notification permission denied");
     }
 
-    const permission = await Notification.requestPermission();
-    if (permission !== "granted") {
-      alert("알림 권한이 허용되지 않았습니다.");
-      return;
-    }
-
+    // 이미 구독되어 있는지 확인
     const existing = await registration.pushManager.getSubscription();
     if (existing) {
       console.log("이미 구독 중입니다.");
       return existing;
     }
 
+    // 알림 권한 요청
+    const permission = await Notification.requestPermission();
+    if (permission !== "granted") {
+      alert("알림 권한이 허용되지 않았습니다.");
+      throw new Error("Notification permission not granted");
+    }
+
+    // VAPID 키 변환 및 구독
     const convertedKey = urlBase64ToUint8Array(PUBLIC_VAPID_KEY);
     const subscription = await registration.pushManager.subscribe({
       userVisibleOnly: true,
       applicationServerKey: convertedKey,
     });
 
-    await fetch("/api/push/save-subscription", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(subscription),
-    });
-
-    console.log("푸시 구독 완료");
-    return subscription;
-  }, []);
+    // GraphQL mutation으로 백엔드에 구독 정보 저장
+    try {
+      await createPushSubscription({
+        variables: {
+          input: {
+            endpoint: subscription.endpoint,
+            expirationTime: subscription.expirationTime
+              ? subscription.expirationTime.toString()
+              : null,
+            keys: {
+              p256dh: arrayBufferToBase64(subscription.getKey("p256dh")!),
+              auth: arrayBufferToBase64(subscription.getKey("auth")!),
+            },
+          },
+        },
+      });
+      console.log("✅ 푸시 구독 완료");
+      return subscription;
+    } catch (error) {
+      // 백엔드 저장 실패 시 브라우저 구독도 해제
+      await subscription.unsubscribe();
+      throw error;
+    }
+  }, [createPushSubscription]);
 
   const unsubscribeFromPush = useCallback(async () => {
     if (typeof window === "undefined") return;
@@ -74,15 +100,33 @@ export function usePushSubscription() {
     const existing = await registration.pushManager.getSubscription();
 
     if (existing) {
+      const endpoint = existing.endpoint;
+      
+      // 먼저 브라우저에서 구독 해제
       await existing.unsubscribe();
-      await fetch("/api/push/remove-subscription", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ endpoint: existing.endpoint }),
-      });
-      console.log("푸시 구독 해제 완료");
+      
+      // 백엔드에서 구독 정보 삭제
+      try {
+        await removePushSubscription({
+          variables: { endpoint },
+        });
+        console.log("✅ 푸시 구독 해제 완료");
+      } catch (error) {
+        console.error("백엔드 구독 삭제 실패:", error);
+        // 브라우저는 이미 해제되었으므로 에러를 던지지 않음
+      }
     }
-  }, []);
+  }, [removePushSubscription]);
 
   return { subscribeToPush, unsubscribeFromPush };
+}
+
+// ArrayBuffer를 Base64로 변환하는 헬퍼 함수
+function arrayBufferToBase64(buffer: ArrayBuffer): string {
+  const bytes = new Uint8Array(buffer);
+  let binary = "";
+  for (let i = 0; i < bytes.byteLength; i++) {
+    binary += String.fromCharCode(bytes[i]);
+  }
+  return btoa(binary);
 }
