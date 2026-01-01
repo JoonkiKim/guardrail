@@ -338,10 +338,14 @@ export default function MypageContainer({
             <ProfileInfo>
               {/* ✅ fetchLoginUser에서 받아온 이름 표시 */}
               <ProfileName>
-                {(loading || !authChecked) ? "로딩 중..." : `${userName}님`} {/* ✅ 토큰 갱신 중일 때도 로딩 상태 */}
+                {loading || !authChecked ? "로딩 중..." : `${userName}님`}{" "}
+                {/* ✅ 토큰 갱신 중일 때도 로딩 상태 */}
               </ProfileName>
               {/* ✅ fetchLoginUser에서 받아온 이메일 표시 */}
-              <ProfileEmail>{(loading || !authChecked) ? "로딩 중..." : userEmail}</ProfileEmail> {/* ✅ 토큰 갱신 중일 때도 로딩 상태 */}
+              <ProfileEmail>
+                {loading || !authChecked ? "로딩 중..." : userEmail}
+              </ProfileEmail>{" "}
+              {/* ✅ 토큰 갱신 중일 때도 로딩 상태 */}
             </ProfileInfo>
           </ProfileHeader>
           {/* <ProfileStats>
@@ -410,7 +414,7 @@ export default function MypageContainer({
               <SettingInfo>
                 <SettingLabel>기록 시간</SettingLabel>
                 <SettingDescription>
-                  매일 가드레일 기록 알림을 받을 시간을 설정하세요
+                  매일 가드레일 기록 알림을 <br /> 받을 시간을 설정하세요
                 </SettingDescription>
               </SettingInfo>
               <div style={{ position: "relative" }}>
@@ -472,7 +476,7 @@ export default function MypageContainer({
             </SettingItem> */}
 
             {/* 테스트 알림 버튼 (개발용) */}
-            <SettingItem>
+            {/* <SettingItem>
               <SettingInfo>
                 <SettingLabel>테스트 알림</SettingLabel>
                 <SettingDescription>
@@ -486,7 +490,7 @@ export default function MypageContainer({
               >
                 알림 테스트
               </Button>
-            </SettingItem>
+            </SettingItem> */}
           </CardContent>
         </Card>
 
