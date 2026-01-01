@@ -310,7 +310,7 @@ export const SeparatorLine = styled.div`
 
 export const FloatingActionButton = styled.button<{ theme: any }>`
   position: absolute;
-  bottom: 13vh;
+  bottom: 15vh;
   /* 컨테이너의 85% 지점에 배치 (컨테이너 너비 기준) */
   right: 10%;
   width: 56px;
