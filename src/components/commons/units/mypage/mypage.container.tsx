@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/router";
 import { useMutation, useQuery } from "@apollo/client";
+import { gql } from "@apollo/client";
 import {
   FETCH_LOGIN_USER,
   UPDATE_PUSH_NOTIFICATION,
@@ -58,6 +59,12 @@ import { usePushSubscription } from "../../../../commons/hooks/usePushSubscripti
 interface MypageContainerProps {
   theme?: keyof typeof COLORWAYS;
 }
+
+const SEND_TEST_PUSH_NOTIFICATION = gql`
+  mutation SendTestPushNotification($userId: String) {
+    sendTestPushNotification(userId: $userId)
+  }
+`;
 
 export default function MypageContainer({
   theme = "forest",
@@ -284,6 +291,21 @@ export default function MypageContainer({
     };
   }, []);
 
+  const [sendTestPushNotification] = useMutation(SEND_TEST_PUSH_NOTIFICATION);
+
+  const handleTestNotification = async () => {
+    try {
+      const userId = data?.fetchLoginUser?.id;
+      await sendTestPushNotification({
+        variables: { userId: userId || null },
+      });
+      alert("테스트 알림을 전송했습니다!");
+    } catch (error) {
+      console.error("테스트 알림 전송 실패:", error);
+      alert("테스트 알림 전송에 실패했습니다.");
+    }
+  };
+
   return (
     <Container gradient={currentTheme.gradient}>
       {/* Top App Bar */}
@@ -444,6 +466,23 @@ export default function MypageContainer({
                 <option value="ocean">Ocean</option>
               </Select>
             </SettingItem> */}
+
+            {/* 테스트 알림 버튼 (개발용) */}
+            <SettingItem>
+              <SettingInfo>
+                <SettingLabel>테스트 알림</SettingLabel>
+                <SettingDescription>
+                  푸시 알림이 정상 작동하는지 테스트합니다
+                </SettingDescription>
+              </SettingInfo>
+              <Button
+                onClick={handleTestNotification}
+                bgColor={currentTheme.button}
+                hoverColor={currentTheme.buttonHover}
+              >
+                알림 테스트
+              </Button>
+            </SettingItem>
           </CardContent>
         </Card>
 

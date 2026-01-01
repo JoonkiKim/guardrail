@@ -18,7 +18,18 @@ function urlBase64ToUint8Array(base64String: string) {
   return outputArray;
 }
 
+// ArrayBuffer를 Base64로 변환하는 헬퍼 함수
+function arrayBufferToBase64(buffer: ArrayBuffer): string {
+  const bytes = new Uint8Array(buffer);
+  let binary = "";
+  for (let i = 0; i < bytes.byteLength; i++) {
+    binary += String.fromCharCode(bytes[i]);
+  }
+  return btoa(binary);
+}
+
 export function usePushSubscription() {
+  // ✅ Apollo mutation 사용
   const [createPushSubscription] = useMutation(CREATE_PUSH_SUBSCRIPTION);
   const [removePushSubscription] = useMutation(REMOVE_PUSH_SUBSCRIPTION);
 
@@ -67,9 +78,14 @@ export function usePushSubscription() {
       applicationServerKey: convertedKey,
     });
 
-    // GraphQL mutation으로 백엔드에 구독 정보 저장
+    // ✅ GraphQL mutation으로 백엔드에 구독 정보 저장 (Apollo Client 사용)
     try {
-      await createPushSubscription({
+      console.log("🔄 구독 정보를 백엔드에 저장 시도...", {
+        endpoint: subscription.endpoint,
+        expirationTime: subscription.expirationTime,
+      });
+
+      const result = await createPushSubscription({
         variables: {
           input: {
             endpoint: subscription.endpoint,
@@ -83,9 +99,17 @@ export function usePushSubscription() {
           },
         },
       });
-      console.log("✅ 푸시 구독 완료");
+
+      console.log("✅ 푸시 구독 완료:", result);
       return subscription;
-    } catch (error) {
+    } catch (error: any) {
+      console.error("❌ 푸시 구독 저장 실패:", error);
+      console.error("에러 상세:", {
+        message: error.message,
+        graphQLErrors: error.graphQLErrors,
+        networkError: error.networkError,
+      });
+
       // 백엔드 저장 실패 시 브라우저 구독도 해제
       await subscription.unsubscribe();
       throw error;
@@ -101,11 +125,11 @@ export function usePushSubscription() {
 
     if (existing) {
       const endpoint = existing.endpoint;
-      
+
       // 먼저 브라우저에서 구독 해제
       await existing.unsubscribe();
-      
-      // 백엔드에서 구독 정보 삭제
+
+      // ✅ GraphQL mutation으로 백엔드에서 구독 정보 삭제
       try {
         await removePushSubscription({
           variables: { endpoint },
@@ -119,14 +143,4 @@ export function usePushSubscription() {
   }, [removePushSubscription]);
 
   return { subscribeToPush, unsubscribeFromPush };
-}
-
-// ArrayBuffer를 Base64로 변환하는 헬퍼 함수
-function arrayBufferToBase64(buffer: ArrayBuffer): string {
-  const bytes = new Uint8Array(buffer);
-  let binary = "";
-  for (let i = 0; i < bytes.byteLength; i++) {
-    binary += String.fromCharCode(bytes[i]);
-  }
-  return btoa(binary);
 }

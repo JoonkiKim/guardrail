@@ -37,7 +37,7 @@ self.addEventListener("fetch", (event) => {
 // 수정된 push 이벤트 리스너
 self.addEventListener("push", (event) => {
   console.log("🔔 Push 이벤트 수신:", event);
-  
+
   let data = {};
 
   if (event.data) {
@@ -73,7 +73,8 @@ self.addEventListener("push", (event) => {
   console.log("📤 알림 표시 시도:", { title, options });
 
   event.waitUntil(
-    self.registration.showNotification(title, options)
+    self.registration
+      .showNotification(title, options)
       .then(() => {
         console.log("✅ 알림 표시 성공");
       })
