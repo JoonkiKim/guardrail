@@ -1,6 +1,8 @@
 import React, { useState, useEffect } from "react";
 import { useRouter } from "next/router";
 import { useQuery, useMutation } from "@apollo/client";
+import { useRecoilValue } from "recoil";
+import { authCheckedState } from "../../../../commons/stores";
 import {
   FETCH_GUARDRAIL,
   DELETE_GUARDRAIL,
@@ -127,11 +129,12 @@ export default function GuardRailDetailContainer() {
   const [showDeleteSuccessModal, setShowDeleteSuccessModal] = useState(false);
   const [showDeleteErrorModal, setShowDeleteErrorModal] = useState(false);
   const [deleteErrorMessage, setDeleteErrorMessage] = useState("");
+  const authChecked = useRecoilValue(authCheckedState);
 
   // GraphQL 쿼리로 가드레일 상세 조회
   const { data, loading, error } = useQuery(FETCH_GUARDRAIL, {
     variables: { guardrailId: guardRailId as string },
-    skip: !guardRailId,
+    skip: !guardRailId || !authChecked, // ✅ 토큰 갱신 완료 전까지 스킵
   });
 
   // 가드레일 삭제 mutation
@@ -209,7 +212,7 @@ export default function GuardRailDetailContainer() {
   };
 
   // ─── Loading State ─────────────────────────────
-  if (loading) {
+  if (loading || !authChecked) { // ✅ 토큰 갱신 중일 때도 로딩 상태
     return (
       <Container gradient={theme.gradient}>
         <TopAppBar>

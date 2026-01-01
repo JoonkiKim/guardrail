@@ -2,6 +2,8 @@ import React, { useState, useEffect } from "react";
 import { useRouter } from "next/router";
 import { useForm } from "react-hook-form";
 import { useMutation, useQuery } from "@apollo/client";
+import { useRecoilValue } from "recoil";
+import { authCheckedState } from "../../../../commons/stores";
 import {
   CREATE_TODO,
   UPDATE_TODO,
@@ -418,13 +420,14 @@ export default function TodoAddPage({
   const mutationError = createError || updateError;
 
   // 기존 투두 데이터 조회 (편집 모드일 때만)
+  const authChecked = useRecoilValue(authCheckedState);
   const {
     data: todoData,
     loading: isTodoLoading,
     error: todoError,
   } = useQuery(FETCH_TODO, {
     variables: { todoId: todoId as string },
-    skip: !isEdit || !todoId, // 편집 모드가 아니거나 todoId가 없으면 스킵
+    skip: !isEdit || !todoId || !authChecked, // ✅ 토큰 갱신 완료 전까지 스킵
     onCompleted: (data) => {
       if (data?.fetchTodo) {
         const todo = data.fetchTodo;

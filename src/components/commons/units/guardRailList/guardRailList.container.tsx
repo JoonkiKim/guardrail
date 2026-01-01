@@ -1,6 +1,8 @@
 import React, { useState } from "react";
 import { useRouter } from "next/router";
 import { useQuery } from "@apollo/client";
+import { useRecoilValue } from "recoil";
+import { authCheckedState } from "../../../../commons/stores";
 import { FETCH_GUARDRAILS } from "../../../../commons/apis/graphql-queries";
 import {
   Container,
@@ -82,9 +84,12 @@ export default function GuardRailListPage() {
   const router = useRouter();
   const [colorway] = useState<keyof typeof COLORWAYS>("forest");
   const theme = COLORWAYS[colorway];
+  const authChecked = useRecoilValue(authCheckedState);
 
   // Apollo Client 쿼리 훅 사용
-  const { data, loading, error } = useQuery(FETCH_GUARDRAILS);
+  const { data, loading, error } = useQuery(FETCH_GUARDRAILS, {
+    skip: !authChecked, // ✅ 토큰 갱신 완료 전까지 스킵
+  });
 
   // 아이콘 컴포넌트들
   const ArrowLeftIcon = () => <span>←</span>;
@@ -144,7 +149,7 @@ export default function GuardRailListPage() {
   };
 
   // 로딩 상태 처리
-  if (loading) {
+  if (loading || !authChecked) { // ✅ 토큰 갱신 중일 때도 로딩 상태
     return (
       <Container gradient={theme.gradient}>
         <TopAppBar>

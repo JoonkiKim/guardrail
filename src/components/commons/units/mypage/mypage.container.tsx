@@ -2,6 +2,8 @@ import { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/router";
 import { useMutation, useQuery } from "@apollo/client";
 import { gql } from "@apollo/client";
+import { useRecoilValue } from "recoil";
+import { authCheckedState } from "../../../../commons/stores";
 import {
   FETCH_LOGIN_USER,
   UPDATE_PUSH_NOTIFICATION,
@@ -75,8 +77,10 @@ export default function MypageContainer({
   const [selectedHour, setSelectedHour] = useState(21); // ✅ 시간만 저장 (0-23)
   const [isSavingTime, setIsSavingTime] = useState(false);
   const saveTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const authChecked = useRecoilValue(authCheckedState);
   // fetchLoginUser 쿼리 실행
   const { data, loading, error } = useQuery(FETCH_LOGIN_USER, {
+    skip: !authChecked, // ✅ 토큰 갱신 완료 전까지 스킵
     onCompleted: (data) => {
       console.log("✅ 사용자 정보 조회 성공:", data);
       console.log("사용자 ID:", data.fetchLoginUser.id);
@@ -334,10 +338,10 @@ export default function MypageContainer({
             <ProfileInfo>
               {/* ✅ fetchLoginUser에서 받아온 이름 표시 */}
               <ProfileName>
-                {loading ? "로딩 중..." : `${userName}님`}
+                {(loading || !authChecked) ? "로딩 중..." : `${userName}님`} {/* ✅ 토큰 갱신 중일 때도 로딩 상태 */}
               </ProfileName>
               {/* ✅ fetchLoginUser에서 받아온 이메일 표시 */}
-              <ProfileEmail>{loading ? "로딩 중..." : userEmail}</ProfileEmail>
+              <ProfileEmail>{(loading || !authChecked) ? "로딩 중..." : userEmail}</ProfileEmail> {/* ✅ 토큰 갱신 중일 때도 로딩 상태 */}
             </ProfileInfo>
           </ProfileHeader>
           {/* <ProfileStats>

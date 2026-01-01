@@ -1,6 +1,8 @@
 import React, { useState, useMemo } from "react";
 import { useRouter } from "next/router";
 import { useQuery } from "@apollo/client";
+import { useRecoilValue } from "recoil";
+import { authCheckedState } from "../../../../commons/stores";
 import { FETCH_PAVLOVS } from "../../../../commons/apis/graphql-queries";
 import {
   Container,
@@ -98,12 +100,14 @@ export default function PavlovSelectionPage() {
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   const [selectedStimulus, setSelectedStimulus] = useState<string>("");
   const [isNavigating, setIsNavigating] = useState(false);
+  const authChecked = useRecoilValue(authCheckedState);
 
   // GraphQL 쿼리로 파블로프 목록 조회
   const { data, loading, error } = useQuery<{ fetchPavlovs: Pavlov[] }>(
     FETCH_PAVLOVS,
     {
       notifyOnNetworkStatusChange: true,
+      skip: !authChecked, // ✅ 토큰 갱신 완료 전까지 스킵
     }
   );
 
@@ -165,7 +169,7 @@ export default function PavlovSelectionPage() {
   };
 
   // 로딩 상태
-  if (loading) {
+  if (loading || !authChecked) { // ✅ 토큰 갱신 중일 때도 로딩 상태
     return (
       <Container gradient={theme.gradient}>
         <TopAppBar>

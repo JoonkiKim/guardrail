@@ -1,6 +1,8 @@
 import { useState, useMemo, useRef, useEffect, Fragment } from "react";
 import { useRouter } from "next/router";
 import { useQuery } from "@apollo/client";
+import { useRecoilValue } from "recoil";
+import { authCheckedState } from "../../../../commons/stores";
 import { FETCH_TODOS_BY_MONTH } from "../../../../commons/apis/graphql-queries";
 import {
   Container,
@@ -157,6 +159,7 @@ export default function TodoListPage() {
   const [isNavigating, setIsNavigating] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
   const todayRef = useRef<HTMLDivElement>(null);
+  const authChecked = useRecoilValue(authCheckedState);
 
   // 현재 날짜
   const today = useMemo(() => new Date(), []);
@@ -168,6 +171,7 @@ export default function TodoListPage() {
       month: currentMonth.getMonth() + 1, // JavaScript month는 0부터 시작하므로 +1
     },
     notifyOnNetworkStatusChange: true,
+    skip: !authChecked, // ✅ 토큰 갱신 완료 전까지 스킵
   });
 
   // 월 변경 시 데이터 다시 조회
@@ -414,7 +418,7 @@ export default function TodoListPage() {
       {/* Content */}
       <ContentWrapper>
         {/* 로딩 상태 */}
-        {loading && (
+        {(loading || !authChecked) && ( // ✅ 토큰 갱신 중일 때도 로딩 상태
           <EmptyState>
             <EmptyIcon>⏳</EmptyIcon>
             <EmptyTitle>투두를 불러오는 중...</EmptyTitle>
@@ -435,7 +439,7 @@ export default function TodoListPage() {
         )}
 
         {/* 투두 목록 */}
-        {!loading && !error && (
+        {!loading && !error && authChecked && ( // ✅ 토큰 갱신 완료 후에만 표시
           <EventList>
             {todosByDate.map((dayGroup: any, index: number) => {
               const isToday =
@@ -507,7 +511,7 @@ export default function TodoListPage() {
       </ContentWrapper>
 
       {/* Floating Action Button - 로딩 중일 때 숨김 */}
-      {!isNavigating && !loading && (
+      {!isNavigating && !loading && authChecked && ( // ✅ 토큰 갱신 완료 후에만 표시
         <FloatingActionButton theme={theme} onClick={handleAddTodo}>
           <PlusIcon />
         </FloatingActionButton>

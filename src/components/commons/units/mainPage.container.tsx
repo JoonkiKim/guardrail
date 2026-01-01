@@ -2,6 +2,8 @@ import React, { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/router";
 import { NetworkStatus, useQuery } from "@apollo/client";
+import { useRecoilValue } from "recoil";
+import { authCheckedState } from "../../../commons/stores";
 import { FETCH_GUARDRAILS } from "../../../commons/apis/graphql-queries";
 import {
   Container,
@@ -102,12 +104,14 @@ export default function MainPage() {
   >("entry");
   const [colorway, setColorway] = useState<keyof typeof COLORWAYS>("forest");
   const theme = COLORWAYS[colorway];
+  const authChecked = useRecoilValue(authCheckedState);
 
   // ✅ Apollo Client 쿼리 훅 사용
   const { data, loading, error, refetch, networkStatus } = useQuery(
     FETCH_GUARDRAILS,
     {
       notifyOnNetworkStatusChange: true,
+      skip: !authChecked, // ✅ 토큰 갱신 완료 전까지 스킵
     }
   );
 
@@ -179,7 +183,7 @@ export default function MainPage() {
   };
 
   const isRefetching = networkStatus === NetworkStatus.refetch;
-  const isLoading = loading || isRefetching;
+  const isLoading = loading || isRefetching || !authChecked; // ✅ 토큰 갱신 중일 때도 로딩 상태
 
   const EntryScreen = () => (
     <EntryScreenWrapper id="entry-screen-wrapper">

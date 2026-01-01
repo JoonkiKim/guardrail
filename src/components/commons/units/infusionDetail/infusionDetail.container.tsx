@@ -1,6 +1,8 @@
 import React, { useState, useEffect } from "react";
 import { useRouter } from "next/router";
 import { useQuery, useMutation } from "@apollo/client";
+import { useRecoilValue } from "recoil";
+import { authCheckedState } from "../../../../commons/stores";
 import {
   FETCH_INFUSION,
   UPDATE_INFUSION,
@@ -87,11 +89,12 @@ export default function InfusionDetailContainer({
   const [showUpdateSuccessModal, setShowUpdateSuccessModal] = useState(false);
 
   const currentTheme = COLORWAYS[theme];
+  const authChecked = useRecoilValue(authCheckedState);
 
   // GraphQL 쿼리로 담금주 데이터 조회
   const { data, loading, error, refetch } = useQuery(FETCH_INFUSION, {
     variables: { infusionId: infusionId as string },
-    skip: !infusionId,
+    skip: !infusionId || !authChecked, // ✅ 토큰 갱신 완료 전까지 스킵
   });
 
   // GraphQL mutation - UPDATE
@@ -372,7 +375,7 @@ export default function InfusionDetailContainer({
   );
 
   // 로딩 상태
-  if (loading) {
+  if (loading || !authChecked) { // ✅ 토큰 갱신 중일 때도 로딩 상태
     return (
       <Container gradient={currentTheme.gradient}>
         <TopAppBar>

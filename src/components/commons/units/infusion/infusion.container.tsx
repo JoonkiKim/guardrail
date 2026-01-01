@@ -4,6 +4,8 @@ import { useForm } from "react-hook-form";
 import { yupResolver } from "@hookform/resolvers/yup";
 import * as yup from "yup";
 import { useMutation, useQuery } from "@apollo/client";
+import { useRecoilValue } from "recoil";
+import { authCheckedState } from "../../../../commons/stores";
 import {
   CREATE_INFUSION,
   FETCH_INFUSIONS,
@@ -137,11 +139,14 @@ export default function InfusionContainer({
   const watchedCategory = watch("category");
 
   // Apollo Client 쿼리 및 뮤테이션 훅 사용
+  const authChecked = useRecoilValue(authCheckedState);
   const {
     data: infusionsData,
     loading,
     error,
-  } = useQuery<FetchInfusionsData>(FETCH_INFUSIONS);
+  } = useQuery<FetchInfusionsData>(FETCH_INFUSIONS, {
+    skip: !authChecked, // ✅ 토큰 갱신 완료 전까지 스킵
+  });
   const [createInfusionMutation, { loading: createLoading }] = useMutation<
     CreateInfusionData,
     CreateInfusionVariables
@@ -358,7 +363,7 @@ export default function InfusionContainer({
               </FilterButton>
             </FilterContainer>
 
-            {loading ? (
+            {(loading || !authChecked) ? ( // ✅ 토큰 갱신 중일 때도 로딩 상태
               <div style={{ textAlign: "center", padding: "20px" }}>
                 로딩 중...
               </div>

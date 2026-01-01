@@ -3,6 +3,8 @@ import { useRouter } from "next/router";
 import { useForm } from "react-hook-form";
 import { yupResolver } from "@hookform/resolvers/yup";
 import * as yup from "yup";
+import { useRecoilValue } from "recoil";
+import { authCheckedState } from "../../../../commons/stores";
 import GuardRailSuccessModal from "../../modals/guardRailSuccessModal";
 import AlertModal from "../../modals/alertModal";
 import {
@@ -344,11 +346,12 @@ export default function GuardRailWriter({
   }, []);
 
   // 기존 가드레일 데이터 조회 (편집 모드일 때만)
+  const authChecked = useRecoilValue(authCheckedState);
   const { data: guardrailData, loading: isGuardrailLoading } = useQuery(
     FETCH_GUARDRAIL,
     {
       variables: { guardrailId: guardRailId as string },
-      skip: !isEdit || !guardRailId,
+      skip: !isEdit || !guardRailId || !authChecked, // ✅ 토큰 갱신 완료 전까지 스킵
       onCompleted: (data) => {
         if (data?.fetchGuardrail) {
           const guardrail = data.fetchGuardrail;

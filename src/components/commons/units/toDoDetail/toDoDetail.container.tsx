@@ -1,6 +1,8 @@
 import React, { useState, useEffect } from "react";
 import { useRouter } from "next/router";
 import { useQuery, useMutation } from "@apollo/client";
+import { useRecoilValue } from "recoil";
+import { authCheckedState } from "../../../../commons/stores";
 import {
   FETCH_TODO,
   DELETE_TODO,
@@ -126,11 +128,12 @@ export default function ToDoDetailContainer() {
   const [showSuccessModal, setShowSuccessModal] = useState(false);
   const [showErrorModal, setShowErrorModal] = useState(false);
   const [errorMessage, setErrorMessage] = useState("");
+  const authChecked = useRecoilValue(authCheckedState);
 
   // GraphQL 쿼리로 투두 상세 조회 (타입 적용)
   const { data, loading, error } = useQuery<FetchTodoResponse>(FETCH_TODO, {
     variables: { todoId: todoId as string },
-    skip: !todoId,
+    skip: !todoId || !authChecked, // ✅ 토큰 갱신 완료 전까지 스킵
   });
 
   // 투두 삭제 mutation
@@ -251,7 +254,7 @@ export default function ToDoDetailContainer() {
   };
 
   // ─── Loading State ─────────────────────────────
-  if (loading) {
+  if (loading || !authChecked) { // ✅ 토큰 갱신 중일 때도 로딩 상태
     return (
       <Container gradient={theme.gradient}>
         <TopAppBar>
