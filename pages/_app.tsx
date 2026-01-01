@@ -44,7 +44,7 @@ function MyApp({ Component, pageProps }) {
 
       // 현재 origin이 프론트엔드 origin과 다르면 등록하지 않음
       if (window.location.origin !== frontendOrigin) {
-        console.warn("서비스 워커는 프론트엔드 origin에서만 등록됩니다.");
+        console.warn("서비스 워커는 프론트엔드 origin에서만 등록됩니다!");
         return;
       }
 
