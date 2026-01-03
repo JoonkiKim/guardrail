@@ -514,6 +514,35 @@ export default function TodoAddPage({
     router.back();
   };
 
+  // 날짜를 ISO string으로 변환하는 헬퍼 함수 (항상 string 반환 보장)
+  const formatDateToString = (dateValue: string | Date): string => {
+    // 이미 ISO string 형식인지 확인
+    if (typeof dateValue === 'string') {
+      // 이미 ISO 형식이면 그대로 반환
+      if (dateValue.includes('T') && (dateValue.includes('Z') || dateValue.includes('+'))) {
+        return dateValue;
+      }
+      // 날짜 문자열 형식인 경우 (예: "2026-01-03")
+      return new Date(dateValue + "T00:00:00Z").toISOString();
+    }
+    // Date 객체인 경우
+    return dateValue.toISOString();
+  };
+
+  const formatRepeatUntilToString = (dateValue: string | Date | undefined): string | null => {
+    if (!dateValue) return null;
+    if (typeof dateValue === 'string') {
+      // 이미 ISO 형식이면 그대로 반환
+      if (dateValue.includes('T') && (dateValue.includes('Z') || dateValue.includes('+'))) {
+        return dateValue;
+      }
+      // 날짜 문자열 형식인 경우
+      return new Date(dateValue + "T23:59:59Z").toISOString();
+    }
+    // Date 객체인 경우
+    return dateValue.toISOString();
+  };
+
   // 폼 제출 핸들러
   const onSubmit = async (data: TodoFormData) => {
     try {
@@ -529,7 +558,7 @@ export default function TodoAddPage({
         const updateTodoInput = {
           title: data.title,
           description: data.description || null,
-          date: new Date(data.date + "T00:00:00Z").toISOString(),
+          date: String(formatDateToString(data.date)), // 명시적으로 String으로 변환
           startTime: data.startTime,
           endTime: data.endTime,
           priority: data.priority,
@@ -539,7 +568,7 @@ export default function TodoAddPage({
               : null,
           repeatUntil:
             data.isRecurring && data.recurringEndDate
-              ? new Date(data.recurringEndDate + "T23:59:59Z").toISOString()
+              ? String(formatRepeatUntilToString(data.recurringEndDate))
               : null,
         };
 
@@ -556,7 +585,7 @@ export default function TodoAddPage({
         const createTodoInput = {
           title: data.title,
           description: data.description || null,
-          date: new Date(data.date + "T00:00:00Z").toISOString(),
+          date: String(formatDateToString(data.date)), // 명시적으로 String으로 변환
           startTime: data.startTime,
           endTime: data.endTime,
           priority: data.priority,
@@ -566,7 +595,7 @@ export default function TodoAddPage({
               : null,
           repeatUntil:
             data.isRecurring && data.recurringEndDate
-              ? new Date(data.recurringEndDate + "T23:59:59Z").toISOString()
+              ? String(formatRepeatUntilToString(data.recurringEndDate))
               : null,
         };
 
