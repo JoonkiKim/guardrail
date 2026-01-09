@@ -487,7 +487,7 @@ export default function GuardRailWriter({
       </CardHeader>
 
       <CardContent style={{ padding: "16px 20px" }}>
-        {isPavlovsLoading ? (
+        {!authChecked || isPavlovsLoading ? (
           <div
             style={{
               textAlign: "center",
