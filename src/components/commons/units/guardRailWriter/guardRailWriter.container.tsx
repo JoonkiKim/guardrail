@@ -269,6 +269,7 @@ interface Guardrail {
   mostImpt: string;
   diary: string;
   thanks: string;
+  regret: string;
   direction: string;
   oneStep: string;
   ignorance: string;
@@ -286,6 +287,7 @@ interface CreateGuardrailInput {
   mostImpt: string;
   diary: string;
   thanks: string;
+  regret: string;
   direction: string;
   oneStep: string;
   ignorance: string;
@@ -301,6 +303,7 @@ interface UpdateGuardrailInput {
   mostImpt?: string;
   diary?: string;
   thanks?: string;
+  regret?: string;
   direction?: string;
   oneStep?: string;
   ignorance?: string;
@@ -361,7 +364,7 @@ export default function GuardRailWriter({
             todayImportant: guardrail.mostImpt || "",
             happenedEvents: guardrail.diary || "",
             gratitude: guardrail.thanks || "",
-            regrets: guardrail.direction || "",
+            regrets: guardrail.regret || "",
             lifeDirection: guardrail.direction || "",
             yesterdayProgress: guardrail.oneStep || "",
             unknowns: guardrail.ignorance || "",
@@ -444,6 +447,7 @@ export default function GuardRailWriter({
               mostImpt: data.todayImportant,
               diary: data.happenedEvents,
               thanks: data.gratitude,
+              regret: data.regrets,
               direction: data.lifeDirection,
               oneStep: data.yesterdayProgress,
               ignorance: data.unknowns,
@@ -460,6 +464,7 @@ export default function GuardRailWriter({
               mostImpt: data.todayImportant,
               diary: data.happenedEvents,
               thanks: data.gratitude,
+              regret: data.regrets,
               direction: data.lifeDirection,
               oneStep: data.yesterdayProgress,
               ignorance: data.unknowns,

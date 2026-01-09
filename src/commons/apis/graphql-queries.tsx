@@ -9,6 +9,7 @@ export const CREATE_GUARDRAIL = gql`
       mostImpt
       diary
       thanks
+      regret
       direction
       oneStep
       ignorance
@@ -27,6 +28,7 @@ export const FETCH_GUARDRAILS = gql`
       mostImpt
       diary
       thanks
+      regret
       direction
       oneStep
       ignorance
@@ -45,6 +47,7 @@ export const FETCH_GUARDRAIL = gql`
       mostImpt
       diary
       thanks
+      regret
       direction
       oneStep
       ignorance
@@ -69,6 +72,7 @@ export const UPDATE_GUARDRAIL = gql`
       mostImpt
       diary
       thanks
+      regret
       direction
       oneStep
       ignorance
@@ -365,10 +369,11 @@ export const FETCH_LOGIN_USER = gql`
   }
 `;
 
-
 // 알림 시간 업데이트 뮤테이션
 export const UPDATE_REMINDER_HOUR = gql`
-  mutation UpdateReminderHour($updateReminderHourInput: UpdateReminderHourInput!) {
+  mutation UpdateReminderHour(
+    $updateReminderHourInput: UpdateReminderHourInput!
+  ) {
     updateReminderHour(updateReminderHourInput: $updateReminderHourInput) {
       id
       reminderHour
@@ -408,8 +413,12 @@ export const REMOVE_PUSH_SUBSCRIPTION = gql`
 
 // 푸시 알림 설정 업데이트 뮤테이션
 export const UPDATE_PUSH_NOTIFICATION = gql`
-  mutation UpdatePushNotification($updatePushNotificationInput: UpdatePushNotificationInput!) {
-    updatePushNotification(updatePushNotificationInput: $updatePushNotificationInput) {
+  mutation UpdatePushNotification(
+    $updatePushNotificationInput: UpdatePushNotificationInput!
+  ) {
+    updatePushNotification(
+      updatePushNotificationInput: $updatePushNotificationInput
+    ) {
       id
       pushNotificationEnabled
       updatedAt

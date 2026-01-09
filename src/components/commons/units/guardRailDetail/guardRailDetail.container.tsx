@@ -112,6 +112,7 @@ interface GuardRail {
   mostImpt: string;
   diary: string;
   thanks: string;
+  regret: string;
   direction: string;
   oneStep: string;
   ignorance: string;
@@ -212,7 +213,8 @@ export default function GuardRailDetailContainer() {
   };
 
   // ─── Loading State ─────────────────────────────
-  if (loading || !authChecked) { // ✅ 토큰 갱신 중일 때도 로딩 상태
+  if (loading || !authChecked) {
+    // ✅ 토큰 갱신 중일 때도 로딩 상태
     return (
       <Container gradient={theme.gradient}>
         <TopAppBar>
@@ -367,7 +369,7 @@ export default function GuardRailDetailContainer() {
                 <FullWidthContainer>
                   <Card>
                     <CardHeader>
-                      <CardTitle>어제의 기분은 어땠나?</CardTitle>
+                      <CardTitle>어제의 기분 한 단어</CardTitle>
                     </CardHeader>
                     <CardContent>
                       <ContentText>
@@ -380,7 +382,7 @@ export default function GuardRailDetailContainer() {
                 <FullWidthContainer>
                   <Card>
                     <CardHeader>
-                      <CardTitle>어제 가장 중요한 것은 무엇이었나?</CardTitle>
+                      <CardTitle>오늘 가장 중요한 한 가지</CardTitle>
                     </CardHeader>
                     <CardContent>
                       <ContentText>
@@ -393,7 +395,7 @@ export default function GuardRailDetailContainer() {
                 <FullWidthContainer>
                   <Card>
                     <CardHeader>
-                      <CardTitle>어제 일어난 주요 사건들은?</CardTitle>
+                      <CardTitle>있었던 일 (일기)</CardTitle>
                     </CardHeader>
                     <CardContent>
                       <ContentText>
@@ -406,7 +408,7 @@ export default function GuardRailDetailContainer() {
                 <FullWidthContainer>
                   <Card>
                     <CardHeader>
-                      <CardTitle>감사했던 것들</CardTitle>
+                      <CardTitle>감사한 것</CardTitle>
                     </CardHeader>
                     <CardContent>
                       <ContentText>
@@ -419,11 +421,11 @@ export default function GuardRailDetailContainer() {
                 <FullWidthContainer>
                   <Card>
                     <CardHeader>
-                      <CardTitle>아쉬웠던 것들</CardTitle>
+                      <CardTitle>후회하는 일</CardTitle>
                     </CardHeader>
                     <CardContent>
                       <ContentText>
-                        {guardRail.oneStep || "기록이 없습니다."}
+                        {guardRail.regret || "기록이 없습니다."}
                       </ContentText>
                     </CardContent>
                   </Card>
@@ -432,7 +434,10 @@ export default function GuardRailDetailContainer() {
                 <FullWidthContainer>
                   <Card>
                     <CardHeader>
-                      <CardTitle>내 삶은 어디를 향하는가?</CardTitle>
+                      <CardTitle>
+                        내 삶은 어디를 향하는가? <br />
+                        나의 화두는 원하는 것과 일치하는가?
+                      </CardTitle>
                     </CardHeader>
                     <CardContent>
                       <ContentText>
@@ -445,7 +450,9 @@ export default function GuardRailDetailContainer() {
                 <FullWidthContainer>
                   <Card>
                     <CardHeader>
-                      <CardTitle>어제 바람직한 방향으로 움직였나?</CardTitle>
+                      <CardTitle>
+                        어제 나는 바람직한 방향으로 한 걸음 움직였는가?
+                      </CardTitle>
                     </CardHeader>
                     <CardContent>
                       <ContentText>
@@ -458,7 +465,7 @@ export default function GuardRailDetailContainer() {
                 <FullWidthContainer>
                   <Card>
                     <CardHeader>
-                      <CardTitle>모르는 것들</CardTitle>
+                      <CardTitle>모르는 것</CardTitle>
                     </CardHeader>
                     <CardContent>
                       <ContentText>

@@ -517,9 +517,12 @@ export default function TodoAddPage({
   // 날짜를 ISO string으로 변환하는 헬퍼 함수 (항상 string 반환 보장)
   const formatDateToString = (dateValue: string | Date): string => {
     // 이미 ISO string 형식인지 확인
-    if (typeof dateValue === 'string') {
+    if (typeof dateValue === "string") {
       // 이미 ISO 형식이면 그대로 반환
-      if (dateValue.includes('T') && (dateValue.includes('Z') || dateValue.includes('+'))) {
+      if (
+        dateValue.includes("T") &&
+        (dateValue.includes("Z") || dateValue.includes("+"))
+      ) {
         return dateValue;
       }
       // 날짜 문자열 형식인 경우 (예: "2026-01-03")
@@ -529,11 +532,16 @@ export default function TodoAddPage({
     return dateValue.toISOString();
   };
 
-  const formatRepeatUntilToString = (dateValue: string | Date | undefined): string | null => {
+  const formatRepeatUntilToString = (
+    dateValue: string | Date | undefined
+  ): string | null => {
     if (!dateValue) return null;
-    if (typeof dateValue === 'string') {
+    if (typeof dateValue === "string") {
       // 이미 ISO 형식이면 그대로 반환
-      if (dateValue.includes('T') && (dateValue.includes('Z') || dateValue.includes('+'))) {
+      if (
+        dateValue.includes("T") &&
+        (dateValue.includes("Z") || dateValue.includes("+"))
+      ) {
         return dateValue;
       }
       // 날짜 문자열 형식인 경우
@@ -682,7 +690,8 @@ export default function TodoAddPage({
             border: `2px solid ${theme.accentBg}`,
             borderRadius: "16px",
             padding: "24px 32px",
-            boxShadow: "0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04)",
+            boxShadow:
+              "0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04)",
             display: "flex",
             alignItems: "center",
             gap: "12px",
@@ -758,7 +767,7 @@ export default function TodoAddPage({
             transform: translate(-50%, -50%);
           }
         }
-        
+
         @keyframes fadeIn {
           0% {
             opacity: 0;
