@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState } from "react";
 import { useRouter } from "next/router";
 import { useForm } from "react-hook-form";
 import { yupResolver } from "@hookform/resolvers/yup";
@@ -48,6 +48,7 @@ import {
   CREATE_GUARDRAIL,
   UPDATE_GUARDRAIL,
   FETCH_GUARDRAIL,
+  FETCH_PAVLOVS,
 } from "../../../../commons/apis/graphql-queries";
 
 // Colorway presets (mainPage와 동일)
@@ -100,128 +101,19 @@ const COLORWAYS: Record<
   },
 };
 
-// 파블로프 데이터
-const PAVLOV_DATA = [
-  { stimulus: "거의 모든 상황", response: "10초 세며 숨 고르기" },
-  {
-    stimulus: "갈등",
-    response: '"내가 맞다는 걸 증명해야 할 필요가 정말 있는가?"',
-  },
-  {
-    stimulus: "갈등",
-    response: '"상대방의 사정, 상대방의 의견을 궁금해 하고 있는가?"',
-  },
-  {
-    stimulus: "갈등",
-    response: '"이겨야 할 대상은 없다. 이해해야 할 사람만 있을 뿐이다."',
-  },
-  { stimulus: "감정적 동요", response: '"이건 무슨 감정인가?"' },
-  {
-    stimulus: "감정적 동요",
-    response: '"내가 지금 배고프거나 피곤한가? 아님 진짜 감정인가?"',
-  },
-  { stimulus: "감정적 동요", response: '"10년 뒤에도 중요한 일인가?"' },
-  {
-    stimulus: "감정적 동요",
-    response: '"이 순간은 전체 우주에서 얼마나 미세한가?"',
-  },
-  { stimulus: "감정적 동요", response: "자리에서 일어나 자극 없이 5분 걷기" },
-  { stimulus: "감정적 동요", response: "목 뒤에 찬물 묻히기" },
-  { stimulus: "감정적 동요", response: '"지금 해결하지 않아도 괜찮은가?"' },
-  {
-    stimulus: "계획이 틀어졌을 때",
-    response: '"전체 그림에서 정말 중요한 부분인가?"',
-  },
-  {
-    stimulus: "계획이 틀어졌을 때",
-    response: '"지금 이 상황에서 통제 가능한 건 뭔가?"',
-  },
-  { stimulus: "데드타임", response: "언어 전환 (예: 외국어 문장 1개 암기)" },
-  { stimulus: "데드타임", response: "짧은 신체 루틴 (월싯 1분)" },
-  { stimulus: "좋은 의사결정", response: '"꼭 지금해야 하는가?"' },
-  { stimulus: "좋은 의사결정", response: '"감정인가 판단인가?"' },
-  {
-    stimulus: "좋은 의사결정",
-    response: '"핵심 기준은 뭔가? 그걸 만족하는 선택은?"',
-  },
-  {
-    stimulus: "좋은 의사결정",
-    response: '"내가 죽기 직전에 이 선택을 어떻게 평가할까?"',
-  },
-  {
-    stimulus: "좋은 의사결정",
-    response: '"10년 후 모든 걸 이룬 미래의 나라면 이 일에 어떻게 접근할까?"',
-  },
-  {
-    stimulus: "좋은 의사결정",
-    response: '"이 결정이 10년 후 내 삶에 어떤 의미가 있을까?"',
-  },
-  { stimulus: "의사결정으로 인한 스트레스", response: '"위임할 수 있는가?"' },
-  { stimulus: "의사결정으로 인한 스트레스", response: '"가역적인가?"' },
-  {
-    stimulus: "의사결정으로 인한 스트레스",
-    response: '"(완벽하지 않더라도) 충분히 좋은가? 좋다면 그렇게 하자."',
-  },
-  {
-    stimulus: "의사결정으로 인한 스트레스",
-    response: '"최악의 경우엔 어떻게 되나? 난 그걸 감당할 수 있나?"',
-  },
-  {
-    stimulus: "문제 해결",
-    response: '"이 문제를 해결하는 완전히 다른 방식은 없을까?"',
-  },
-  {
-    stimulus: "문제 해결",
-    response: '"처음부터 다시 시작한다면, 진짜 문제가 무엇이었나?"',
-  },
-  { stimulus: "소비 충동", response: '"좋다. 근데 필요하진 않다."' },
-  {
-    stimulus: "소비 충동",
-    response: '"일시불이래도 살 것인가? (10만 원 이하는 무조건 일시불)"',
-  },
-  {
-    stimulus: "소비 충동",
-    response:
-      '"가격을 떠나, 이걸 구매하는 데에 나의 시간, 집중력, 의사결정에 따른 정신적 피로를 투자할 가치가 있는가?"',
-  },
-  { stimulus: "소비 충동", response: "그래도 사고 싶으면 소비 리스트에 기록" },
-  {
-    stimulus: "콘텐츠 소비",
-    response: '"여기에 시간 쓰는 게 정말 가치 있나?"',
-  },
-  {
-    stimulus: "콘텐츠 소비",
-    response: '"난 지금 이걸 정말로 궁금해하나, 원하나?"',
-  },
-  { stimulus: "의사소통", response: "이름 기억하고 시작" },
-  { stimulus: "의사소통", response: '"듣기 비율이 얼마나 되는가?"' },
-  {
-    stimulus: "의사소통",
-    response: '"상대방의 얘기하고 싶어하는 것은 무엇인가?"',
-  },
-  {
-    stimulus: "의사소통",
-    response: '"상대의 감정을 얻었는가? 이성보다 감정이 먼저다."',
-  },
-  {
-    stimulus: "다맥락에 압도될 때",
-    response: "모든 맥락을 두서없이 적고 가장 빨리 끝낼 수 있는 하나 먼저 처리",
-  },
-  {
-    stimulus: "시간 허투루 보낼 때",
-    response: '"10분은 깨어있는 시간의 1%다."',
-  },
-  { stimulus: "일 시작이 안 될 때", response: "3분으로 쪼개서 바로 한다" },
-  { stimulus: "일이 열렸을 때", response: "바로 메모" },
-  {
-    stimulus: "자기 전",
-    response: "오늘 하루 중 후회되는 (스스로에게 떳떳하지 못한) 행동이 있었나?",
-  },
-  {
-    stimulus: "회의감",
-    response: "지금 이 회의는 문제 해결을 위한 건가, 자기소모인가?",
-  },
-];
+// 파블로프 타입 정의
+interface Pavlov {
+  id: string;
+  name: string;
+  pavlovDetails: PavlovDetail[];
+  createdAt: string;
+  updatedAt: string;
+}
+
+interface PavlovDetail {
+  id: string;
+  description: string;
+}
 
 // yup 검증 스키마 정의
 const schema = yup.object({
@@ -342,14 +234,33 @@ export default function GuardRailWriter({
     response: string;
   } | null>(null);
 
-  // 컴포넌트 마운트 시 랜덤 파블로프 선택
-  useEffect(() => {
-    const randomIndex = Math.floor(Math.random() * PAVLOV_DATA.length);
-    setRandomPavlov(PAVLOV_DATA[randomIndex]);
-  }, []);
-
   // 기존 가드레일 데이터 조회 (편집 모드일 때만)
   const authChecked = useRecoilValue(authCheckedState);
+
+  // 파블로프 데이터 조회
+  const { data: pavlovsData, loading: isPavlovsLoading } = useQuery<{
+    fetchPavlovs: Pavlov[];
+  }>(FETCH_PAVLOVS, {
+    skip: !authChecked, // 토큰 갱신 완료 전까지 스킵
+    onCompleted: (data) => {
+      // 파블로프 데이터를 변환하여 랜덤으로 하나 선택
+      if (data?.fetchPavlovs && data.fetchPavlovs.length > 0) {
+        // 모든 파블로프를 평탄화하여 {stimulus, response} 형태로 변환
+        const allPavlovs = data.fetchPavlovs.flatMap((pavlov) =>
+          pavlov.pavlovDetails.map((detail) => ({
+            stimulus: pavlov.name,
+            response: detail.description,
+          }))
+        );
+
+        // 랜덤으로 하나 선택
+        if (allPavlovs.length > 0) {
+          const randomIndex = Math.floor(Math.random() * allPavlovs.length);
+          setRandomPavlov(allPavlovs[randomIndex]);
+        }
+      }
+    },
+  });
   const { data: guardrailData, loading: isGuardrailLoading } = useQuery(
     FETCH_GUARDRAIL,
     {
@@ -576,7 +487,17 @@ export default function GuardRailWriter({
       </CardHeader>
 
       <CardContent style={{ padding: "16px 20px" }}>
-        {randomPavlov && (
+        {isPavlovsLoading ? (
+          <div
+            style={{
+              textAlign: "center",
+              padding: "20px",
+              color: theme.accentText,
+            }}
+          >
+            파블로프를 불러오는 중...
+          </div>
+        ) : randomPavlov ? (
           <div>
             <div
               style={{
@@ -623,48 +544,34 @@ export default function GuardRailWriter({
                   lineHeight: "1.6",
                   fontWeight: "500",
                   textAlign: "center",
-                  // fontStyle: "italic",
                 }}
               >
                 {randomPavlov.response}
               </div>
             </div>
-
-            {/* <div
+          </div>
+        ) : (
+          <div
+            style={{
+              textAlign: "center",
+              padding: "20px",
+              color: "#6b7280",
+            }}
+          >
+            작성된 파블로프가 없습니다.
+            <br />
+            <Button
+              theme={theme}
+              type="button"
+              onClick={() => router.push("/pavlovWriter")}
               style={{
-                display: "flex",
-                justifyContent: "space-between",
-                alignItems: "center",
                 marginTop: "12px",
-                paddingTop: "8px",
-                borderTop: `1px solid ${theme.ring}`,
+                fontSize: "12px",
+                padding: "8px 16px",
               }}
             >
-              <div
-                style={{
-                  fontSize: "12px",
-                  color: "#6b7280",
-                }}
-              >
-                이 문장을 오늘 하루 동안 기억해보세요
-              </div>
-              <Button
-                theme={theme}
-                style={{
-                  fontSize: "12px",
-                  padding: "6px 12px",
-                  height: "auto",
-                  borderRadius: "12px",
-                }}
-                onClick={() => {
-                  const newRandom =
-                    PAVLOV_DATA[Math.floor(Math.random() * PAVLOV_DATA.length)];
-                  setRandomPavlov(newRandom);
-                }}
-              >
-                다른 문장 보기
-              </Button>
-            </div> */}
+              파블로프 작성하기
+            </Button>
           </div>
         )}
       </CardContent>
