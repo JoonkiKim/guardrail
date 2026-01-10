@@ -170,107 +170,141 @@ export default function TokenInitializer() {
     // ✅ 초기화 시작 표시
     isInitialized.current = true;
 
-    restoreAccessToken()
-      .then((res) => {
-        console.log("✅ 리프레시 응답:", res);
-
-        const newToken = res.data?.restoreAccessToken;
-        console.log("newToken", newToken);
-
-        if (newToken) {
-          // ✅ 토큰 갱신 성공
-          setAccessToken(newToken);
-          console.log("✅ 리프레시 성공 (GraphQL)");
-          console.log("📝 새 액세스 토큰:", newToken.substring(0, 20) + "...");
-
-          // ✅ 토큰 갱신 성공 후 사용자 정보 조회 및 푸시 구독 처리
-          refetchUser()
-            .then((userRes) => {
-              const marketingAgreed =
-                userRes.data?.fetchLoginUser?.marketingAgreed;
-              const pushNotificationEnabled =
-                userRes.data?.fetchLoginUser?.pushNotificationEnabled;
-
-              console.log("📧 마케팅 동의 여부:", marketingAgreed);
-              console.log("🔔 푸시 알림 활성화 여부:", pushNotificationEnabled);
-
-              // ✅ 마케팅 동의 + 푸시 알림 활성화 + 아직 구독 시도 안 함
-              if (
-                marketingAgreed &&
-                pushNotificationEnabled &&
-                !pushSubscriptionAttempted.current
-              ) {
-                pushSubscriptionAttempted.current = true;
-                setTimeout(() => {
-                  subscribeToPushNotifications();
-                }, 1000);
-              }
-            })
-            .catch((error) => {
-              console.error("❌ 사용자 정보 조회 실패:", error);
-            });
-        } else {
-          // ❌ 토큰이 없음 → 로그인 필요
-          console.warn(
-            "⚠️ 리프레시 응답에 토큰이 없습니다 → 로그인 페이지 이동"
-          );
-          clearAccessToken();
-
-          if (!PUBLIC_PATHS.some((path) => router.pathname.startsWith(path))) {
-            router.push("/login");
-          }
-        }
+    // ✅ 브라우저가 완전히 준비될 때까지 기다림 (인위적 지연 대신)
+    // requestIdleCallback이 지원되지 않으면 requestAnimationFrame 사용
+    const executeRestore = () => {
+      restoreAccessToken({
+        context: {
+          headers: {
+            authorization: "",
+          },
+        },
       })
-      .catch((error) => {
-        console.error("❌ 리프레시 실패:", error);
+        .then((res) => {
+          console.log("✅ 리프레시 응답:", res);
 
-        // 인증 에러 확인
-        const isAuthError =
-          error.graphQLErrors?.some(
+          const newToken = res.data?.restoreAccessToken;
+          console.log("newToken", newToken);
+
+          if (newToken) {
+            // ✅ 토큰 갱신 성공
+            setAccessToken(newToken);
+            console.log("✅ 리프레시 성공 (GraphQL)");
+            console.log(
+              "📝 새 액세스 토큰:",
+              newToken.substring(0, 20) + "..."
+            );
+
+            // ✅ 토큰 갱신 성공 후 사용자 정보 조회 및 푸시 구독 처리
+            refetchUser()
+              .then((userRes) => {
+                const marketingAgreed =
+                  userRes.data?.fetchLoginUser?.marketingAgreed;
+                const pushNotificationEnabled =
+                  userRes.data?.fetchLoginUser?.pushNotificationEnabled;
+
+                console.log("📧 마케팅 동의 여부:", marketingAgreed);
+                console.log(
+                  "🔔 푸시 알림 활성화 여부:",
+                  pushNotificationEnabled
+                );
+
+                // ✅ 마케팅 동의 + 푸시 알림 활성화 + 아직 구독 시도 안 함
+                if (
+                  marketingAgreed &&
+                  pushNotificationEnabled &&
+                  !pushSubscriptionAttempted.current
+                ) {
+                  pushSubscriptionAttempted.current = true;
+                  setTimeout(() => {
+                    subscribeToPushNotifications();
+                  }, 1000);
+                }
+              })
+              .catch((error) => {
+                console.error("❌ 사용자 정보 조회 실패:", error);
+              });
+          } else {
+            // ❌ 토큰이 없음 → 로그인 필요
+            console.warn(
+              "⚠️ 리프레시 응답에 토큰이 없습니다 → 로그인 페이지 이동"
+            );
+            clearAccessToken();
+
+            if (
+              !PUBLIC_PATHS.some((path) => router.pathname.startsWith(path))
+            ) {
+              router.push("/login");
+            }
+          }
+        })
+        .catch((error) => {
+          console.error("❌ 리프레시 실패:", error);
+
+          // 인증 에러 확인
+          const isAuthError =
+            error.graphQLErrors?.some(
+              (e: any) =>
+                e.extensions?.code === "UNAUTHENTICATED" ||
+                e.extensions?.code === "FORBIDDEN" ||
+                e.extensions?.statusCode === 401 ||
+                e.extensions?.statusCode === 403
+            ) ||
+            error.message.includes("Unauthorized") ||
+            error.message.includes("Invalid token") ||
+            error.message.includes("Token expired") ||
+            error.message.includes("No refresh token");
+
+          const isNetworkError = error.networkError !== null;
+
+          const isServerError = error.graphQLErrors?.some(
             (e: any) =>
-              e.extensions?.code === "UNAUTHENTICATED" ||
-              e.extensions?.code === "FORBIDDEN" ||
-              e.extensions?.statusCode === 401 ||
-              e.extensions?.statusCode === 403
-          ) ||
-          error.message.includes("Unauthorized") ||
-          error.message.includes("Invalid token") ||
-          error.message.includes("Token expired") ||
-          error.message.includes("No refresh token");
+              e.extensions?.statusCode >= 500 ||
+              e.extensions?.code === "INTERNAL_SERVER_ERROR"
+          );
 
-        const isNetworkError = error.networkError !== null;
+          if (isAuthError) {
+            console.log("🔐 인증 실패 → 로그인 페이지 이동");
+            clearAccessToken();
 
-        const isServerError = error.graphQLErrors?.some(
-          (e: any) =>
-            e.extensions?.statusCode >= 500 ||
-            e.extensions?.code === "INTERNAL_SERVER_ERROR"
-        );
+            if (
+              !PUBLIC_PATHS.some((path) => router.pathname.startsWith(path))
+            ) {
+              const returnUrl = encodeURIComponent(router.asPath);
+              router.push(`/login?returnUrl=${returnUrl}`);
+            }
+          } else if (isNetworkError) {
+            console.warn("🌐 네트워크 오류 → 토큰 유지, 오프라인 모드");
+          } else if (isServerError) {
+            console.warn("🔧 서버 오류 → 토큰 유지, 나중에 재시도");
+          } else {
+            console.error("❌ 알 수 없는 오류 → 로그인 페이지 이동");
+            clearAccessToken();
 
-        if (isAuthError) {
-          console.log("🔐 인증 실패 → 로그인 페이지 이동");
-          clearAccessToken();
-
-          if (!PUBLIC_PATHS.some((path) => router.pathname.startsWith(path))) {
-            const returnUrl = encodeURIComponent(router.asPath);
-            router.push(`/login?returnUrl=${returnUrl}`);
+            if (
+              !PUBLIC_PATHS.some((path) => router.pathname.startsWith(path))
+            ) {
+              router.push("/login");
+            }
           }
-        } else if (isNetworkError) {
-          console.warn("🌐 네트워크 오류 → 토큰 유지, 오프라인 모드");
-        } else if (isServerError) {
-          console.warn("🔧 서버 오류 → 토큰 유지, 나중에 재시도");
-        } else {
-          console.error("❌ 알 수 없는 오류 → 로그인 페이지 이동");
-          clearAccessToken();
+        })
+        .finally(() => {
+          console.log("✔️ TokenInitializer: 인증 체크 완료");
+          setChecked(true);
+        });
+    };
 
-          if (!PUBLIC_PATHS.some((path) => router.pathname.startsWith(path))) {
-            router.push("/login");
-          }
-        }
-      })
-      .finally(() => {
-        console.log("✔️ TokenInitializer: 인증 체크 완료");
-        setChecked(true);
+    // ✅ 브라우저가 준비될 때 실행 (인위적 지연 대신)
+    if (typeof requestIdleCallback !== "undefined") {
+      requestIdleCallback(executeRestore, { timeout: 1000 });
+    } else if (typeof requestAnimationFrame !== "undefined") {
+      requestAnimationFrame(() => {
+        requestAnimationFrame(executeRestore);
       });
+    } else {
+      // 폴백: 즉시 실행
+      executeRestore();
+    }
   }, []); // ✅ 빈 배열 - 마운트 시 한 번만 실행!
 
   return null;
